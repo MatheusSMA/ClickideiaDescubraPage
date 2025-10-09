@@ -367,9 +367,9 @@
             <!-- Alert Messages -->
             <div id="alertContainer"></div>
 
-            <!-- Add Question Form -->
+            <!-- Add/Edit Question Form -->
             <div class="section">
-                <h2 class="section-title">➕ Adicionar Nova Pergunta</h2>
+                <h2 class="section-title" id="formTitle">➕ Adicionar Nova Pergunta</h2>
                 <div class="question-form">
                     <div class="form-group">
                         <label for="questionText">Pergunta:</label>
@@ -409,9 +409,11 @@
                         <input type="number" id="timeSeconds" value="20" min="5" max="60">
                     </div>
 
-                    <button class="btn btn-primary" onclick="addQuestion()">
-                        ➕ Adicionar Pergunta
-                    </button>
+                    <div id="formActions">
+                        <button class="btn btn-primary" onclick="addQuestion()">
+                            ➕ Adicionar Pergunta
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -434,6 +436,7 @@
         };
 
         let quizData = null;
+        let editingQuestionId = null;
 
         // Load questions on page load
         document.addEventListener('DOMContentLoaded', function () {
@@ -546,15 +549,9 @@
 
             quizData.questions.push(newQuestion);
 
-            // Clear form
-            document.getElementById('questionText').value = '';
-            document.getElementById('option0').value = '';
-            document.getElementById('option1').value = '';
-            document.getElementById('option2').value = '';
-            document.getElementById('option3').value = '';
-            document.getElementById('category').value = '';
-            document.getElementById('timeSeconds').value = '20';
-            document.querySelector('input[name="correctOption"]:checked').checked = false;
+            // Clear form and reset to add mode
+            clearForm();
+            resetToAddMode();
 
             // Save and refresh
             saveQuestions().then(() => {
@@ -563,6 +560,134 @@
             });
 
             showAlert('Pergunta adicionada com sucesso!', 'success');
+        }
+
+        function editQuestion(questionId) {
+            const question = quizData.questions.find(q => q.id === questionId);
+            if (!question) {
+                showAlert('Pergunta não encontrada!', 'error');
+                return;
+            }
+
+            // Set form to edit mode
+            editingQuestionId = questionId;
+            document.getElementById('formTitle').textContent = '✏️ Editar Pergunta';
+
+            // Fill form with question data
+            document.getElementById('questionText').value = question.question;
+            document.getElementById('option0').value = question.options[0];
+            document.getElementById('option1').value = question.options[1];
+            document.getElementById('option2').value = question.options[2];
+            document.getElementById('option3').value = question.options[3];
+            document.getElementById('category').value = question.category;
+            document.getElementById('timeSeconds').value = question.timeSeconds;
+
+            // Set correct option
+            document.getElementById(`correct${question.correctIndex}`).checked = true;
+
+            // Update form buttons
+            document.getElementById('formActions').innerHTML = `
+                <button class="btn btn-success" onclick="updateQuestion()">
+                    💾 Salvar Alterações
+                </button>
+                <button class="btn btn-danger" onclick="cancelEdit()">
+                    ❌ Cancelar
+                </button>
+            `;
+
+            // Scroll to form
+            document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function updateQuestion() {
+            const questionText = document.getElementById('questionText').value.trim();
+            const option0 = document.getElementById('option0').value.trim();
+            const option1 = document.getElementById('option1').value.trim();
+            const option2 = document.getElementById('option2').value.trim();
+            const option3 = document.getElementById('option3').value.trim();
+            const category = document.getElementById('category').value.trim();
+            const timeSeconds = parseInt(document.getElementById('timeSeconds').value);
+            const correctOption = document.querySelector('input[name="correctOption"]:checked');
+
+            // Validation
+            if (!questionText) {
+                showAlert('Por favor, digite a pergunta.', 'error');
+                return;
+            }
+
+            if (!option0 || !option1 || !option2 || !option3) {
+                showAlert('Por favor, preencha todas as 4 opções.', 'error');
+                return;
+            }
+
+            if (!correctOption) {
+                showAlert('Por favor, selecione a resposta correta.', 'error');
+                return;
+            }
+
+            if (!category) {
+                showAlert('Por favor, digite a categoria.', 'error');
+                return;
+            }
+
+            // Find and update the question
+            const questionIndex = quizData.questions.findIndex(q => q.id === editingQuestionId);
+            if (questionIndex === -1) {
+                showAlert('Pergunta não encontrada!', 'error');
+                return;
+            }
+
+            quizData.questions[questionIndex] = {
+                id: editingQuestionId,
+                question: questionText,
+                options: [option0, option1, option2, option3],
+                correctIndex: parseInt(correctOption.value),
+                timeSeconds: timeSeconds,
+                category: category
+            };
+
+            // Clear form and reset to add mode
+            clearForm();
+            resetToAddMode();
+
+            // Save and refresh
+            saveQuestions().then(() => {
+                displayQuestions();
+                updateStats();
+            });
+
+            showAlert('Pergunta atualizada com sucesso!', 'success');
+        }
+
+        function cancelEdit() {
+            clearForm();
+            resetToAddMode();
+        }
+
+        function clearForm() {
+            document.getElementById('questionText').value = '';
+            document.getElementById('option0').value = '';
+            document.getElementById('option1').value = '';
+            document.getElementById('option2').value = '';
+            document.getElementById('option3').value = '';
+            document.getElementById('category').value = '';
+            document.getElementById('timeSeconds').value = '20';
+
+            // Clear radio buttons
+            const checkedRadio = document.querySelector('input[name="correctOption"]:checked');
+            if (checkedRadio) {
+                checkedRadio.checked = false;
+            }
+        }
+
+        function resetToAddMode() {
+            editingQuestionId = null;
+            document.getElementById('formTitle').textContent = '➕ Adicionar Nova Pergunta';
+            document.getElementById('formActions').innerHTML = `
+                <button class="btn btn-primary" onclick="addQuestion()">
+                    ➕ Adicionar Pergunta
+                </button>
+            `;
         }
 
         function deleteQuestion(questionId) {
@@ -608,6 +733,9 @@
                         `).join('')}
                     </div>
                     <div class="question-actions">
+                        <button class="btn btn-primary" onclick="editQuestion('${question.id}')">
+                            ✏️ Editar
+                        </button>
                         <button class="btn btn-danger" onclick="deleteQuestion('${question.id}')">
                             🗑️ Excluir
                         </button>
