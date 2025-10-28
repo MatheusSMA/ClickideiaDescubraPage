@@ -832,12 +832,12 @@
                             <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
                                 <strong>⚠️ Requisitos do Servidor Customizado:</strong>
                                 <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                                    <li><strong>Métodos HTTP:</strong> GET e PUT</li>
+                                    <li><strong>Métodos HTTP:</strong> GET e POST</li>
                                     <li><strong>Arquivos JSON:</strong> Devem existir e ser acessíveis publicamente</li>
                                     <li><strong>CORS (Critical!):</strong> Configurar headers no servidor:
                                         <ul style="margin-top: 5px;">
                                             <li><code>Access-Control-Allow-Origin: *</code></li>
-                                            <li><code>Access-Control-Allow-Methods: GET, PUT, OPTIONS</code></li>
+                                            <li><code>Access-Control-Allow-Methods: GET, POST, OPTIONS</code></li>
                                             <li><code>Access-Control-Allow-Headers: Content-Type</code></li>
                                         </ul>
                                     </li>
@@ -868,19 +868,15 @@
 
                             <div style="padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
                                 <strong>🚀 Como Funciona:</strong>
-                                <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                                    <li>Escolha o tipo de API e configure as URLs acima</li>
-                                    <li>Clique em "Aplicar Configuração Agora"</li>
-                                    <li>As mudanças afetam apenas este gerenciador web</li>
-                                    <li>As configurações são temporárias (duram enquanto o navegador estiver aberto)</li>
-                                </ul>
-                            </div>
-
-                            <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                                <strong>📱 Para Mudar Configuração na Aplicação Unity:</strong>
-                                <p style="margin: 10px 0 0 0; line-height: 1.8;">
-                                    Contactar a equipe de desenvolvimento. A configuração da aplicação Unity é gerenciada separadamente via arquivo interno.
-                                </p>
+                                <ol style="margin: 10px 0 0 20px; line-height: 1.8;">
+                                    <li>Escolha o tipo de API (JSONBin ou Servidor Customizado)</li>
+                                    <li>Configure as URLs se necessário</li>
+                                    <li>Clique em "🔄 Aplicar Configuração Agora"</li>
+                                    <li><strong>Web:</strong> Passa a usar as novas URLs imediatamente (GET/POST)</li>
+                                    <li><strong>Unity:</strong> O navegador vai pedir para salvar o arquivo <code>api-config.json</code></li>
+                                    <li>Salve o arquivo em: <code>Build/StreamingAssets/api-config.json</code></li>
+                                    <li>Pronto! Unity lerá na próxima vez que abrir</li>
+                                </ol>
                             </div>
                         </div>
                     </div>
@@ -1230,7 +1226,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             }, 500);
         }
 
-        function applyConfigAndReload() {
+        async function applyConfigAndReload() {
             const selectedType = document.querySelector('input[name="apiType"]:checked').value;
 
             // Atualizar configuração global
@@ -1250,6 +1246,9 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
             console.log('✅ Configuração atualizada:', API_CONFIG);
 
+            // Salvar arquivo no StreamingAssets
+            await saveConfigToFile();
+
             showAlert('✅ Configuração aplicada! Recarregando dados...', 'success');
 
             // Recarregar todos os dados com a nova configuração
@@ -1259,6 +1258,61 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     loadRanking();
                 }
             }, 500);
+        }
+
+        async function saveConfigToFile() {
+            const config = {
+                apiType: API_CONFIG.apiType,
+                jsonbin: {
+                    apiKey: API_CONFIG.jsonbin.apiKey,
+                    baseUrl: API_CONFIG.jsonbin.baseUrl,
+                    quizBinId: API_CONFIG.jsonbin.quizBinId,
+                    rankingBinId: API_CONFIG.jsonbin.rankingBinId,
+                    registrationBinId: API_CONFIG.jsonbin.registrationBinId
+                },
+                customServer: {
+                    baseUrl: API_CONFIG.customServer.baseUrl,
+                    quizEndpoint: API_CONFIG.customServer.quizEndpoint,
+                    rankingEndpoint: API_CONFIG.customServer.rankingEndpoint,
+                    registrationEndpoint: API_CONFIG.customServer.registrationEndpoint
+                }
+            };
+
+            const json = JSON.stringify(config, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+
+            try {
+                // Tentar usar File System Access API (Chrome moderno)
+                if ('showSaveFilePicker' in window) {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: 'api-config.json',
+                        types: [{
+                            description: 'JSON Config File',
+                            accept: { 'application/json': ['.json'] }
+                        }]
+                    });
+
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+
+                    console.log('✅ Arquivo salvo via File System Access API');
+                    showAlert('💾 Arquivo salvo! Coloque em: Build/StreamingAssets/api-config.json', 'success');
+                } else {
+                    // Fallback: download automático
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'api-config.json';
+                    link.click();
+                    URL.revokeObjectURL(url);
+
+                    console.log('✅ Arquivo baixado automaticamente');
+                    showAlert('💾 Arquivo baixado! Coloque em: Build/StreamingAssets/api-config.json', 'success');
+                }
+            } catch (error) {
+                console.warn('⚠️ Salvamento cancelado ou não suportado:', error.message);
+            }
         }
 
 
@@ -1513,7 +1567,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 // Detectar erro CORS
                 if (error.message.includes('Failed to fetch') || error.toString().includes('NetworkError')) {
                     setStatus('error', '❌ Erro CORS - Configure o servidor!');
-                    showAlert('⚠️ Erro de CORS detectado!\n\nO servidor precisa ter os headers:\n- Access-Control-Allow-Origin: *\n- Access-Control-Allow-Methods: GET, PUT, OPTIONS\n- Access-Control-Allow-Headers: Content-Type\n\nOu volte para JSONBin.io na aba de Configurações.', 'error');
+                    showAlert('⚠️ Erro de CORS detectado!\n\nO servidor precisa ter os headers:\n- Access-Control-Allow-Origin: *\n- Access-Control-Allow-Methods: GET, POST, OPTIONS\n- Access-Control-Allow-Headers: Content-Type\n\nOu volte para JSONBin.io na aba de Configurações.', 'error');
                 } else {
                     setStatus('error', '❌ Erro ao carregar perguntas');
                 }
@@ -1529,7 +1583,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 processImagesForSaving();
 
                 const response = await fetch(getUpdateURL('quiz'), {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: getRequestHeaders(true),
                     body: JSON.stringify(quizData)
                 });
