@@ -1,0 +1,22 @@
+{
+  "apiType": "jsonbin",
+  "jsonbin": {
+    "apiKey": "$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y",
+    "baseUrl": "https://api.jsonbin.io/v3/b",
+    "quizBinId": "68e7598543b1c97be95fbb4d",
+    "rankingBinId": "68e75972ae596e708f0b701f",
+    "registrationBinId": "68ed827aae596e708f1217dc"
+  },
+  "customServer": {
+    "baseUrl": "https://jogos.clickideia.com.br",
+    "quizEndpoint": "/QuizData.json",
+    "rankingEndpoint": "/RankingData.json",
+    "registrationEndpoint": "/Register.json"
+  },
+  "_comments": {
+    "apiType": "Tipo de API: 'jsonbin' ou 'customServer'",
+    "jsonbin": "Configurações para JSONBin.io (padrão)",
+    "customServer": "Configurações para servidor customizado",
+    "howToSwitch": "Altere 'apiType' para 'customServer' para usar servidor próprio"
+  }
+}

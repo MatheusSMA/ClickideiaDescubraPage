@@ -569,6 +569,7 @@
                 <button class="tab active" onclick="switchTab('groups')">📂 Grupos</button>
                 <button class="tab" onclick="switchTab('questions')">📝 Perguntas</button>
                 <button class="tab" onclick="switchTab('ranking')">🏆 Ranking</button>
+                <button class="tab" onclick="switchTab('config')">⚙️ Configurações</button>
             </div>
 
             <!-- Groups Tab -->
@@ -739,16 +740,226 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Config Tab -->
+            <div id="configTab" class="tab-content">
+                <div class="section">
+                    <h2 class="section-title">⚙️ Configurações de API</h2>
+
+                    <div style="margin-bottom: 20px; padding: 15px; background: #ffebee; border-radius: 8px; border-left: 4px solid #f44336;">
+                        <strong>🚨 Sobre o Erro CORS:</strong>
+                        <p style="margin: 10px 0 0 0; line-height: 1.6;">
+                            Se você viu erro "blocked by CORS policy", é <strong>normal</strong>!
+                            O servidor <code>https://jogos.clickideia.com.br</code> precisa adicionar headers CORS para funcionar no gerenciador web.
+                            <br><br>
+                            <strong>✅ Mas isso não afeta a aplicação Unity!</strong> Unity não precisa de CORS, então você pode:
+                        </p>
+                        <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                            <li>Usar JSONBin.io no gerenciador web (funciona perfeitamente)</li>
+                            <li>Usar servidor customizado na aplicação Unity (sem erro CORS)</li>
+                            <li>Ou configurar CORS no servidor para usar servidor customizado em ambos</li>
+                        </ul>
+                    </div>
+
+                    <div class="question-form">
+                        <p style="margin-bottom: 20px; color: #666;">
+                            Configure qual servidor será usado para armazenar os dados do quiz.
+                        </p>
+
+                        <div class="form-group">
+                            <label><strong>Tipo de API:</strong></label>
+                            <div style="display: flex; gap: 20px; margin-top: 10px;">
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="radio" name="apiType" value="jsonbin" checked onchange="toggleAPIConfig()">
+                                    <span style="margin-left: 8px;">📦 JSONBin.io (Padrão)</span>
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer;">
+                                    <input type="radio" name="apiType" value="customServer" onchange="toggleAPIConfig()">
+                                    <span style="margin-left: 8px;">🌐 Servidor Customizado</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- JSONBin Config -->
+                        <div id="jsonbinConfig" style="margin-top: 30px;">
+                            <h3 style="color: #667eea; margin-bottom: 15px;">📦 Configurações JSONBin.io</h3>
+
+                            <div class="form-group">
+                                <label>API Key:</label>
+                                <input type="text" id="jsonbinApiKey" value="$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y" readonly style="background: #f5f5f5;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Quiz Bin ID:</label>
+                                <input type="text" id="jsonbinQuizBinId" value="68e7598543b1c97be95fbb4d" readonly style="background: #f5f5f5;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Ranking Bin ID:</label>
+                                <input type="text" id="jsonbinRankingBinId" value="68e75972ae596e708f0b701f" readonly style="background: #f5f5f5;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Registration Bin ID:</label>
+                                <input type="text" id="jsonbinRegistrationBinId" value="68ed827aae596e708f1217dc" readonly style="background: #f5f5f5;">
+                            </div>
+                        </div>
+
+                        <!-- Custom Server Config -->
+                        <div id="customServerConfig" style="margin-top: 30px; display: none;">
+                            <h3 style="color: #667eea; margin-bottom: 15px;">🌐 Configurações Servidor Customizado</h3>
+
+                            <div class="form-group">
+                                <label>Base URL:</label>
+                                <input type="text" id="customBaseUrl" value="https://jogos.clickideia.com.br" placeholder="https://seu-servidor.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Quiz Endpoint:</label>
+                                <input type="text" id="customQuizEndpoint" value="/QuizData.json" placeholder="/QuizData.json">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Ranking Endpoint:</label>
+                                <input type="text" id="customRankingEndpoint" value="/RankingData.json" placeholder="/RankingData.json">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Registration Endpoint:</label>
+                                <input type="text" id="customRegistrationEndpoint" value="/Register.json" placeholder="/Register.json">
+                            </div>
+
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
+                                <strong>⚠️ Requisitos do Servidor Customizado:</strong>
+                                <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                                    <li><strong>Métodos HTTP:</strong> GET e PUT</li>
+                                    <li><strong>Arquivos JSON:</strong> Devem existir e ser acessíveis publicamente</li>
+                                    <li><strong>CORS (Critical!):</strong> Configurar headers no servidor:
+                                        <ul style="margin-top: 5px;">
+                                            <li><code>Access-Control-Allow-Origin: *</code></li>
+                                            <li><code>Access-Control-Allow-Methods: GET, PUT, OPTIONS</code></li>
+                                            <li><code>Access-Control-Allow-Headers: Content-Type</code></li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Para Unity:</strong> CORS não é necessário (apenas para web)</li>
+                                </ul>
+                                <p style="margin: 10px 0 0 0; padding: 10px; background: #fff; border-radius: 4px; font-size: 13px;">
+                                    <strong>💡 Dica:</strong> Se você vir erro "blocked by CORS policy" no console, significa que o servidor não está configurado corretamente.
+                                    A aplicação Unity não terá esse problema, apenas o gerenciador web.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+                            <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h4 style="margin: 0 0 10px 0; color: #1976d2;">📋 Configuração Atual:</h4>
+                                <div id="currentConfig" style="font-family: monospace; font-size: 14px; color: #666;">
+                                    Carregando...
+                                </div>
+                            </div>
+
+                            <button class="btn btn-primary" style="font-size: 18px; padding: 15px; width: 100%; margin-bottom: 15px;" onclick="applyConfigAndReload()">
+                                🔄 Aplicar Configuração Agora
+                            </button>
+
+                            <button class="btn btn-warning" style="font-size: 16px; padding: 12px; width: 100%; margin-bottom: 20px;" onclick="quickSwitchToJSONBin()">
+                                ⚡ Voltar Rápido para JSONBin.io
+                            </button>
+
+                            <div style="padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                                <strong>🚀 Como Funciona:</strong>
+                                <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
+                                    <li>Escolha o tipo de API e configure as URLs acima</li>
+                                    <li>Clique em "Aplicar Configuração Agora"</li>
+                                    <li>As mudanças afetam apenas este gerenciador web</li>
+                                    <li>As configurações são temporárias (duram enquanto o navegador estiver aberto)</li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-top: 15px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <strong>📱 Para Mudar Configuração na Aplicação Unity:</strong>
+                                <p style="margin: 10px 0 0 0; line-height: 1.8;">
+                                    Contactar a equipe de desenvolvimento. A configuração da aplicação Unity é gerenciada separadamente via arquivo interno.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // API Configuration
-        const API_CONFIG = {
-            binId: '68e7598543b1c97be95fbb4d',
-            apiKey: '$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y',
-            baseUrl: 'https://api.jsonbin.io/v3/b'
+        // Dynamic API Configuration - Can be changed via config tab
+        let API_CONFIG = {
+            apiType: 'jsonbin', // 'jsonbin' or 'customServer'
+            jsonbin: {
+                apiKey: '$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y',
+                baseUrl: 'https://api.jsonbin.io/v3/b',
+                quizBinId: '68e7598543b1c97be95fbb4d',
+                rankingBinId: '68e75972ae596e708f0b701f',
+                registrationBinId: '68ed827aae596e708f1217dc'
+            },
+            customServer: {
+                baseUrl: 'https://jogos.clickideia.com.br',
+                quizEndpoint: '/QuizData.json',
+                rankingEndpoint: '/RankingData.json',
+                registrationEndpoint: '/Register.json'
+            }
         };
+
+        // Helper functions to get URLs based on current config
+        function getQuizURL() {
+            if (API_CONFIG.apiType === 'jsonbin') {
+                return `${API_CONFIG.jsonbin.baseUrl}/${API_CONFIG.jsonbin.quizBinId}/latest`;
+            } else {
+                return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.quizEndpoint}`;
+            }
+        }
+
+        function getRankingURL() {
+            if (API_CONFIG.apiType === 'jsonbin') {
+                return `${API_CONFIG.jsonbin.baseUrl}/${API_CONFIG.jsonbin.rankingBinId}/latest`;
+            } else {
+                return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.rankingEndpoint}`;
+            }
+        }
+
+        function getRegistrationURL() {
+            if (API_CONFIG.apiType === 'jsonbin') {
+                return `${API_CONFIG.jsonbin.baseUrl}/${API_CONFIG.jsonbin.registrationBinId}/latest`;
+            } else {
+                return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.registrationEndpoint}`;
+            }
+        }
+
+        function getRequestHeaders(isUpdate = false) {
+            const headers = {};
+            if (API_CONFIG.apiType === 'jsonbin') {
+                headers['X-Master-Key'] = API_CONFIG.jsonbin.apiKey;
+                headers['X-Bin-Meta'] = 'false';
+                if (isUpdate) {
+                    headers['Content-Type'] = 'application/json';
+                }
+            } else {
+                headers['Content-Type'] = 'application/json';
+            }
+            return headers;
+        }
+
+        function getUpdateURL(type) {
+            if (API_CONFIG.apiType === 'jsonbin') {
+                let binId;
+                if (type === 'quiz') binId = API_CONFIG.jsonbin.quizBinId;
+                else if (type === 'ranking') binId = API_CONFIG.jsonbin.rankingBinId;
+                else if (type === 'registration') binId = API_CONFIG.jsonbin.registrationBinId;
+                return `${API_CONFIG.jsonbin.baseUrl}/${binId}`;
+            } else {
+                if (type === 'quiz') return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.quizEndpoint}`;
+                else if (type === 'ranking') return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.rankingEndpoint}`;
+                else if (type === 'registration') return `${API_CONFIG.customServer.baseUrl}${API_CONFIG.customServer.registrationEndpoint}`;
+            }
+        }
 
         let quizData = null;
         let editingQuestionId = null;
@@ -949,8 +1160,121 @@
             } else if (tabName === 'ranking') {
                 document.getElementById('rankingTab').classList.add('active');
                 loadRanking(); // Carregar ranking ao abrir a aba
+            } else if (tabName === 'config') {
+                document.getElementById('configTab').classList.add('active');
+                updateCurrentConfigDisplay();
             }
         }
+
+        // Config Tab Functions
+        function toggleAPIConfig() {
+            const selectedType = document.querySelector('input[name="apiType"]:checked').value;
+
+            if (selectedType === 'jsonbin') {
+                document.getElementById('jsonbinConfig').style.display = 'block';
+                document.getElementById('customServerConfig').style.display = 'none';
+            } else {
+                document.getElementById('jsonbinConfig').style.display = 'none';
+                document.getElementById('customServerConfig').style.display = 'block';
+            }
+
+            updateCurrentConfigDisplay();
+        }
+
+        function updateCurrentConfigDisplay() {
+            const selectedType = document.querySelector('input[name="apiType"]:checked').value;
+            const configDiv = document.getElementById('currentConfig');
+
+            let configText = '';
+            if (selectedType === 'jsonbin') {
+                configText = `
+API Type: JSONBin.io
+Quiz URL: ${API_CONFIG.jsonbin.baseUrl}/${document.getElementById('jsonbinQuizBinId').value}/latest
+Ranking URL: ${API_CONFIG.jsonbin.baseUrl}/${document.getElementById('jsonbinRankingBinId').value}/latest
+Registration URL: ${API_CONFIG.jsonbin.baseUrl}/${document.getElementById('jsonbinRegistrationBinId').value}/latest
+                `.trim();
+            } else {
+                const baseUrl = document.getElementById('customBaseUrl').value;
+                const quizEndpoint = document.getElementById('customQuizEndpoint').value;
+                const rankingEndpoint = document.getElementById('customRankingEndpoint').value;
+                const registrationEndpoint = document.getElementById('customRegistrationEndpoint').value;
+
+                configText = `
+API Type: Servidor Customizado
+Quiz URL: ${baseUrl}${quizEndpoint}
+Ranking URL: ${baseUrl}${rankingEndpoint}
+Registration URL: ${baseUrl}${registrationEndpoint}
+                `.trim();
+            }
+
+            configDiv.textContent = configText;
+        }
+
+        function quickSwitchToJSONBin() {
+            // Marcar radio button JSONBin
+            document.querySelector('input[name="apiType"][value="jsonbin"]').checked = true;
+            toggleAPIConfig();
+
+            // Aplicar configuração
+            API_CONFIG.apiType = 'jsonbin';
+
+            console.log('⚡ Voltando para JSONBin.io...');
+            showAlert('⚡ Voltando para JSONBin.io...', 'success');
+
+            // Recarregar dados
+            setTimeout(() => {
+                loadQuestions();
+                if (currentTab === 'ranking') {
+                    loadRanking();
+                }
+            }, 500);
+        }
+
+        function applyConfigAndReload() {
+            const selectedType = document.querySelector('input[name="apiType"]:checked').value;
+
+            // Atualizar configuração global
+            API_CONFIG.apiType = selectedType;
+
+            // Atualizar valores do JSONBin (se foram editados)
+            API_CONFIG.jsonbin.apiKey = document.getElementById('jsonbinApiKey').value;
+            API_CONFIG.jsonbin.quizBinId = document.getElementById('jsonbinQuizBinId').value;
+            API_CONFIG.jsonbin.rankingBinId = document.getElementById('jsonbinRankingBinId').value;
+            API_CONFIG.jsonbin.registrationBinId = document.getElementById('jsonbinRegistrationBinId').value;
+
+            // Atualizar valores do Custom Server
+            API_CONFIG.customServer.baseUrl = document.getElementById('customBaseUrl').value;
+            API_CONFIG.customServer.quizEndpoint = document.getElementById('customQuizEndpoint').value;
+            API_CONFIG.customServer.rankingEndpoint = document.getElementById('customRankingEndpoint').value;
+            API_CONFIG.customServer.registrationEndpoint = document.getElementById('customRegistrationEndpoint').value;
+
+            console.log('✅ Configuração atualizada:', API_CONFIG);
+
+            showAlert('✅ Configuração aplicada! Recarregando dados...', 'success');
+
+            // Recarregar todos os dados com a nova configuração
+            setTimeout(() => {
+                loadQuestions();
+                if (currentTab === 'ranking') {
+                    loadRanking();
+                }
+            }, 500);
+        }
+
+
+        // Update config display when custom server fields change
+        document.addEventListener('DOMContentLoaded', function() {
+            const customFields = ['customBaseUrl', 'customQuizEndpoint', 'customRankingEndpoint', 'customRegistrationEndpoint'];
+            customFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) {
+                    field.addEventListener('input', updateCurrentConfigDisplay);
+                }
+            });
+
+            // Initialize config display on page load
+            updateCurrentConfigDisplay();
+        });
 
         // Schedule management functions
         function dateTimeToUnixTimestamp(dateStr, timeStr) {
@@ -1130,12 +1454,9 @@
             setStatus('loading', 'Carregando perguntas...');
 
             try {
-                const response = await fetch(`${API_CONFIG.baseUrl}/${API_CONFIG.binId}/latest`, {
+                const response = await fetch(getQuizURL(), {
                     method: 'GET',
-                    headers: {
-                        'X-Master-Key': API_CONFIG.apiKey,
-                        'X-Bin-Meta': 'false'
-                    }
+                    headers: getRequestHeaders()
                 });
 
                 if (!response.ok) {
@@ -1188,7 +1509,14 @@
 
             } catch (error) {
                 console.error('Error loading questions:', error);
-                setStatus('error', '❌ Erro ao carregar perguntas');
+
+                // Detectar erro CORS
+                if (error.message.includes('Failed to fetch') || error.toString().includes('NetworkError')) {
+                    setStatus('error', '❌ Erro CORS - Configure o servidor!');
+                    showAlert('⚠️ Erro de CORS detectado!\n\nO servidor precisa ter os headers:\n- Access-Control-Allow-Origin: *\n- Access-Control-Allow-Methods: GET, PUT, OPTIONS\n- Access-Control-Allow-Headers: Content-Type\n\nOu volte para JSONBin.io na aba de Configurações.', 'error');
+                } else {
+                    setStatus('error', '❌ Erro ao carregar perguntas');
+                }
                 showAlert('Erro ao carregar perguntas: ' + error.message, 'error');
             }
         }
@@ -1200,12 +1528,9 @@
                 // Process images before saving
                 processImagesForSaving();
 
-                const response = await fetch(`${API_CONFIG.baseUrl}/${API_CONFIG.binId}`, {
+                const response = await fetch(getUpdateURL('quiz'), {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Master-Key': API_CONFIG.apiKey
-                    },
+                    headers: getRequestHeaders(true),
                     body: JSON.stringify(quizData)
                 });
 
@@ -2094,9 +2419,6 @@
         }
 
         // Ranking functions
-        const RANKING_BIN_ID = '68e75972ae596e708f0b701f'; // Ranking bin ID (mesmo usado no Unity)
-        const REGISTRATION_BIN_ID = '68ed827aae596e708f1217dc'; // Registration bin ID
-
         let rankingData = null;
         let registrationData = null;
 
@@ -2105,15 +2427,10 @@
                 setStatus('loading', 'Carregando ranking...');
 
                 console.log('🔄 Carregando ranking...');
-                console.log('Ranking BIN ID:', RANKING_BIN_ID);
-                console.log('Registration BIN ID:', REGISTRATION_BIN_ID);
 
                 // Carregar ranking
-                const rankingResponse = await fetch(`${API_CONFIG.baseUrl}/${RANKING_BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': API_CONFIG.apiKey,
-                        'X-Bin-Meta': 'false'
-                    }
+                const rankingResponse = await fetch(getRankingURL(), {
+                    headers: getRequestHeaders()
                 });
 
                 console.log('Ranking response status:', rankingResponse.status);
@@ -2128,11 +2445,8 @@
                 console.log('✅ Ranking carregado:', rankingData);
 
                 // Carregar registros
-                const registrationResponse = await fetch(`${API_CONFIG.baseUrl}/${REGISTRATION_BIN_ID}/latest`, {
-                    headers: {
-                        'X-Master-Key': API_CONFIG.apiKey,
-                        'X-Bin-Meta': 'false'
-                    }
+                const registrationResponse = await fetch(getRegistrationURL(), {
+                    headers: getRequestHeaders()
                 });
 
                 console.log('Registration response status:', registrationResponse.status);
