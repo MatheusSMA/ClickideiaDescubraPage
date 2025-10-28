@@ -1,0 +1,11 @@
+# Pasta opcional para imagens das questões
+# --------------------------------------------------
+# Hoje o quiz carrega tudo via Base64 direto do JSON.
+# Use esta pasta somente se quiser manter um fallback
+# com arquivos físicos (StreamingAssets/QuestionImages).
+#
+# Exemplos (opcional):
+# - question_1234567890.jpg
+# - question_9876543210.png
+#
+# Se usar, coloque os arquivos diretamente aqui.
