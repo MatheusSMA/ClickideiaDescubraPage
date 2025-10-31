@@ -1663,7 +1663,8 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 processImagesForSaving();
 
                 // Determinar o método HTTP correto
-                const method = 'PUT'; // Sempre PUT para ambos os servidores
+                // POST para servidor customizado (S3), PUT para JSONBin
+                const method = API_CONFIG.apiType === 'customServer' ? 'POST' : 'PUT';
 
                 const url = getUpdateURL('quiz');
                 const headers = getRequestHeaders(true);
