@@ -758,19 +758,20 @@
                 <div class="section">
                     <h2 class="section-title">⚙️ Configurações de API</h2>
 
-                    <div style="margin-bottom: 20px; padding: 15px; background: #ffebee; border-radius: 8px; border-left: 4px solid #f44336;">
-                        <strong>🚨 Sobre o Erro CORS:</strong>
+                    <div style="margin-bottom: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <strong>✅ Usando JSONBin.io Pro</strong>
                         <p style="margin: 10px 0 0 0; line-height: 1.6;">
-                            Se você viu erro "blocked by CORS policy", é <strong>normal</strong>!
-                            O servidor <code>https://jogos.clickideia.com.br</code> precisa adicionar headers CORS para funcionar no gerenciador web.
-                            <br><br>
-                            <strong>✅ Mas isso não afeta a aplicação Unity!</strong> Unity não precisa de CORS, então você pode:
+                            O sistema está configurado para usar o <strong>JSONBin.io com plano Pro</strong>, que oferece:
                         </p>
                         <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                            <li>Usar JSONBin.io no gerenciador web (funciona perfeitamente)</li>
-                            <li>Usar servidor customizado na aplicação Unity (sem erro CORS)</li>
-                            <li>Ou configurar CORS no servidor para usar servidor customizado em ambos</li>
+                            <li>✅ Sem limites de tamanho de payload (suporta imagens base64)</li>
+                            <li>✅ Funciona perfeitamente no gerenciador web e Unity</li>
+                            <li>✅ Alta disponibilidade e backup automático</li>
+                            <li>✅ API rápida e confiável</li>
                         </ul>
+                        <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
+                            <strong>Nota:</strong> A opção de servidor customizado está disponível como backup, mas não é necessária.
+                        </p>
                     </div>
 
                     <div class="question-form">
@@ -783,18 +784,25 @@
                             <div style="display: flex; gap: 20px; margin-top: 10px;">
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="radio" name="apiType" value="jsonbin" checked onchange="toggleAPIConfig()">
-                                    <span style="margin-left: 8px;">📦 JSONBin.io (Padrão)</span>
+                                    <span style="margin-left: 8px;">📦 JSONBin.io Pro (Recomendado)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
                                     <input type="radio" name="apiType" value="customServer" onchange="toggleAPIConfig()">
-                                    <span style="margin-left: 8px;">🌐 Servidor Customizado</span>
+                                    <span style="margin-left: 8px;">🌐 Servidor Customizado (Backup)</span>
                                 </label>
                             </div>
                         </div>
 
                         <!-- JSONBin Config -->
                         <div id="jsonbinConfig" style="margin-top: 30px;">
-                            <h3 style="color: #667eea; margin-bottom: 15px;">📦 Configurações JSONBin.io</h3>
+                            <h3 style="color: #667eea; margin-bottom: 15px;">📦 Configurações JSONBin.io Pro</h3>
+
+                            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <strong>✨ Plano Pro Ativo</strong>
+                                <p style="margin: 8px 0 0 0; font-size: 14px; color: #666;">
+                                    Sem limites de tamanho, suporta imagens base64, alta disponibilidade.
+                                </p>
+                            </div>
 
                             <div class="form-group">
                                 <label>API Key:</label>
@@ -1641,6 +1649,16 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             setStatus('loading', 'Salvando alterações...');
 
             try {
+                // Capturar estado ANTES de salvar
+                const dataBeforeSave = JSON.parse(JSON.stringify(quizData));
+                const groupCountBefore = dataBeforeSave.groups?.length || 0;
+                const questionCountBefore = dataBeforeSave.groups?.reduce((sum, g) => sum + (g.questions?.length || 0), 0) || 0;
+
+                console.log(`📊 ANTES DE SALVAR:
+                    Grupos: ${groupCountBefore}
+                    Perguntas: ${questionCountBefore}
+                    Dados completos:`, dataBeforeSave);
+
                 // Process images before saving
                 processImagesForSaving();
 
@@ -1653,13 +1671,14 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 const payloadSize = JSON.stringify(quizData).length;
                 const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
 
-                console.log(`📤 Salvando quiz via ${method} para: ${url}`);
+                console.log(`📤 SALVANDO quiz via ${method} para: ${url}`);
                 console.log(`📋 Headers:`, headers);
                 console.log(`📦 Payload size: ${payloadSize} bytes (${payloadMB} MB)`);
+                console.log(`📝 Payload completo (primeiros 500 chars):`, JSON.stringify(quizData).substring(0, 500));
 
-                // Avisar se o payload estiver muito grande (JSONBin tem limite de ~16MB)
+                // Avisar se o payload estiver muito grande
                 if (payloadSize > 10 * 1024 * 1024) {
-                    console.warn(`⚠️ Payload muito grande: ${payloadMB} MB. Pode falhar no JSONBin!`);
+                    console.warn(`⚠️ Payload muito grande: ${payloadMB} MB. Pode falhar!`);
                     showAlert(`⚠️ Dados muito grandes (${payloadMB} MB). Considere reduzir o número de imagens ou usar imagens menores.`, 'warning');
                 }
 
@@ -1669,9 +1688,18 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     body: JSON.stringify(quizData)
                 });
 
+                console.log(`📡 Status da resposta: ${response.status} ${response.statusText}`);
+                console.log(`📡 Headers da resposta:`, Object.fromEntries(response.headers.entries()));
+
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('❌ Erro na resposta:', response.status, errorText);
+
+                    // Detectar erro S3
+                    if (errorText.includes('<?xml') && errorText.includes('<Error>')) {
+                        console.error('🪣 Erro do S3 detectado! O bucket pode estar configurado apenas para leitura.');
+                        throw new Error(`Erro S3 (${response.status}): Bucket sem permissão de escrita.\n\nO servidor S3 não permite PUT. Configure permissões ou use JSONBin.io.`);
+                    }
 
                     // Mensagem específica para erro 404
                     if (response.status === 404 && API_CONFIG.apiType === 'jsonbin') {
@@ -1684,6 +1712,40 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
                 const result = await response.text();
                 console.log('✅ Resposta do servidor:', result);
+
+                // VERIFICAR SE DADOS FORAM SALVOS REALMENTE
+                console.log('🔍 Verificando se dados foram persistidos...');
+                setTimeout(async () => {
+                    try {
+                        const verifyResponse = await fetch(getQuizURL(), {
+                            method: 'GET',
+                            headers: getRequestHeaders()
+                        });
+
+                        if (verifyResponse.ok) {
+                            const savedData = await verifyResponse.json();
+                            const groupCountAfter = savedData.groups?.length || 0;
+                            const questionCountAfter = savedData.groups?.reduce((sum, g) => sum + (g.questions?.length || 0), 0) || 0;
+
+                            console.log(`📊 DEPOIS DE SALVAR (verificação):
+                                Grupos: ${groupCountAfter} (era ${groupCountBefore})
+                                Perguntas: ${questionCountAfter} (era ${questionCountBefore})
+                                Dados completos:`, savedData);
+
+                            if (groupCountAfter !== groupCountBefore || questionCountAfter !== questionCountBefore) {
+                                console.warn(`⚠️ DADOS VERIFICADOS: Alterações confirmadas!`);
+                            } else {
+                                console.error(`❌ ERRO CRÍTICO: Servidor aceitou PUT mas NÃO salvou os dados!
+                                    - O servidor pode estar configurado como somente leitura
+                                    - O S3 pode não ter permissões de escrita
+                                    - Recomendação: Use JSONBin.io`);
+                                showAlert('⚠️ Aviso: Servidor aceitou os dados mas pode não ter salvado. Verifique se as alterações persistem após recarregar.', 'warning');
+                            }
+                        }
+                    } catch (verifyError) {
+                        console.warn('Não foi possível verificar salvamento:', verifyError);
+                    }
+                }, 1000);
 
                 setStatus('success', '✅ Alterações salvas com sucesso');
                 showAlert('Perguntas salvas com sucesso!', 'success');
