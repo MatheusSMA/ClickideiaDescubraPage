@@ -933,12 +933,14 @@
             const headers = {};
             if (API_CONFIG.apiType === 'jsonbin') {
                 headers['X-Master-Key'] = API_CONFIG.jsonbin.apiKey;
+                headers['Accept'] = 'application/json';
                 headers['X-Bin-Meta'] = 'false';
                 if (isUpdate) {
                     headers['Content-Type'] = 'application/json';
                 }
             } else {
                 headers['Content-Type'] = 'application/json';
+                headers['Accept'] = 'application/json';
             }
             return headers;
         }
@@ -1514,6 +1516,11 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 });
 
                 if (!response.ok) {
+                    // Mensagem específica para erro 404
+                    if (response.status === 404 && API_CONFIG.apiType === 'jsonbin') {
+                        console.error(`❌ Bin não encontrado: ${getQuizURL()}`);
+                        throw new Error(`Bin não encontrado (404)!\n\nO Bin ID não existe no JSONBin.io.\nURL tentada: ${getQuizURL()}\n\nSoluções:\n1. Verifique o Bin ID na aba Configurações\n2. Crie um novo Bin em https://jsonbin.io\n3. Ou use o servidor customizado`);
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
@@ -1582,15 +1589,37 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 // Process images before saving
                 processImagesForSaving();
 
-                const response = await fetch(getUpdateURL('quiz'), {
-                    method: 'POST',
-                    headers: getRequestHeaders(true),
+                // Determinar o método HTTP correto
+                const method = 'PUT'; // Sempre PUT para ambos os servidores
+
+                const url = getUpdateURL('quiz');
+                const headers = getRequestHeaders(true);
+
+                console.log(`📤 Salvando quiz via ${method} para: ${url}`);
+                console.log(`📋 Headers:`, headers);
+                console.log(`📦 Payload size: ${JSON.stringify(quizData).length} bytes`);
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: headers,
                     body: JSON.stringify(quizData)
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta:', response.status, errorText);
+
+                    // Mensagem específica para erro 404
+                    if (response.status === 404 && API_CONFIG.apiType === 'jsonbin') {
+                        console.error(`❌ Bin não encontrado: ${getUpdateURL('quiz')}`);
+                        throw new Error(`Bin não encontrado (404)!\n\nO Bin ID não existe no JSONBin.io.\nURL tentada: ${getUpdateURL('quiz')}\n\nSoluções:\n1. Verifique o Bin ID na aba Configurações\n2. Crie um novo Bin em https://jsonbin.io\n3. Ou use o servidor customizado`);
+                    }
+
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
                 }
+
+                const result = await response.text();
+                console.log('✅ Resposta do servidor:', result);
 
                 setStatus('success', '✅ Alterações salvas com sucesso');
                 showAlert('Perguntas salvas com sucesso!', 'success');
