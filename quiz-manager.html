@@ -283,6 +283,12 @@
             color: #721c24;
         }
 
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+        }
+
         .loading-spinner {
             display: inline-block;
             width: 20px;
@@ -1015,32 +1021,73 @@
                 return;
             }
 
-            // Validate file size (2MB max)
-            if (file.size > 2 * 1024 * 1024) {
-                showAlert('A imagem deve ter no máximo 2MB.', 'error');
-                return;
-            }
+            // Show loading message
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '<p style="color: #666;">⏳ Processando imagem...</p>';
 
             const reader = new FileReader();
             reader.onload = function (e) {
-                const dataUrl = e.target.result;
-                const base64Data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl;
-                const mimeType = file.type || 'image/png';
-                const filename = generateImageFilename(file.name);
+                const img = new Image();
+                img.onload = function () {
+                    // Compress image to reduce size
+                    compressImage(img, file.name, file.type).then(compressed => {
+                        currentImageData = compressed;
+                        imageRemoved = false;
+                        showImagePreview(currentImageData.dataUrl);
 
-                currentImageData = {
+                        // Show size info
+                        const sizeKB = Math.round((compressed.base64.length * 3) / 4 / 1024);
+                        console.log(`📦 Imagem comprimida: ${sizeKB} KB`);
+
+                        if (sizeKB > 500) {
+                            showAlert(`⚠️ Imagem grande (${sizeKB} KB). Considere usar uma imagem menor para evitar problemas.`, 'warning');
+                        }
+                    });
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function compressImage(img, originalName, mimeType) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Redimensionar se for muito grande (máximo 1200px no lado maior)
+                const maxSize = 1200;
+                if (width > maxSize || height > maxSize) {
+                    if (width > height) {
+                        height = (height / width) * maxSize;
+                        width = maxSize;
+                    } else {
+                        width = (width / height) * maxSize;
+                        height = maxSize;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Comprimir como JPEG com qualidade 0.85 (ou PNG se for PNG)
+                const outputMimeType = mimeType.includes('png') ? 'image/png' : 'image/jpeg';
+                const quality = 0.85;
+                const dataUrl = canvas.toDataURL(outputMimeType, quality);
+                const base64Data = dataUrl.split(',')[1];
+                const filename = generateImageFilename(originalName);
+
+                resolve({
                     filename: filename,
                     base64: base64Data,
                     dataUrl: dataUrl,
-                    mimeType: mimeType,
-                    originalName: file.name
-                };
-
-                imageRemoved = false;
-
-                showImagePreview(currentImageData.dataUrl);
-            };
-            reader.readAsDataURL(file);
+                    mimeType: outputMimeType,
+                    originalName: originalName
+                });
+            });
         }
 
         function generateImageFilename(originalName) {
@@ -1603,9 +1650,18 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 const url = getUpdateURL('quiz');
                 const headers = getRequestHeaders(true);
 
+                const payloadSize = JSON.stringify(quizData).length;
+                const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
+
                 console.log(`📤 Salvando quiz via ${method} para: ${url}`);
                 console.log(`📋 Headers:`, headers);
-                console.log(`📦 Payload size: ${JSON.stringify(quizData).length} bytes`);
+                console.log(`📦 Payload size: ${payloadSize} bytes (${payloadMB} MB)`);
+
+                // Avisar se o payload estiver muito grande (JSONBin tem limite de ~16MB)
+                if (payloadSize > 10 * 1024 * 1024) {
+                    console.warn(`⚠️ Payload muito grande: ${payloadMB} MB. Pode falhar no JSONBin!`);
+                    showAlert(`⚠️ Dados muito grandes (${payloadMB} MB). Considere reduzir o número de imagens ou usar imagens menores.`, 'warning');
+                }
 
                 const response = await fetch(url, {
                     method: method,
