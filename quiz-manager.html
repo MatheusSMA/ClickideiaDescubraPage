@@ -530,6 +530,11 @@
                         <div class="stat-number" id="avgTime">0s</div>
                         <div class="stat-label">Tempo Médio</div>
                     </div>
+                    <div class="stat-card" id="payloadSizeCard" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                        <div class="stat-number" id="payloadSize">0 MB</div>
+                        <div class="stat-label">Tamanho dos Dados</div>
+                        <div style="font-size: 12px; margin-top: 5px; opacity: 0.9;">Limite: 8 MB</div>
+                    </div>
                 </div>
 
                 <!-- Add/Edit Group Form -->
@@ -543,8 +548,15 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="groupIntroMessage">Mensagem de Apresentação:</label>
+                            <textarea id="groupIntroMessage" placeholder="Mensagem exibida ANTES de iniciar este grupo..."></textarea>
+                            <small style="color: #666;">Aparece na tela de transição antes de começar as perguntas do grupo.</small>
+                        </div>
+
+                        <div class="form-group">
                             <label for="groupMessage">Mensagem de Conclusão:</label>
                             <textarea id="groupMessage" placeholder="Mensagem exibida ao completar este grupo..."></textarea>
+                            <small style="color: #666;">Aparece na tela de transição após completar todas as perguntas.</small>
                         </div>
 
                         <div id="groupFormActions">
@@ -628,7 +640,7 @@
 
                     <div class="form-group">
                         <label for="timeSeconds">Tempo (segundos):</label>
-                        <input type="number" id="timeSeconds" value="20" min="5" max="60">
+                        <input type="number" id="timeSeconds" value="150" min="5" max="300">
                     </div>
 
                     <!-- Alert Messages locais (para validação) -->
@@ -1031,26 +1043,68 @@
 
             // Show loading message
             const container = document.getElementById('imagePreviewContainer');
-            container.innerHTML = '<p style="color: #666;">⏳ Processando imagem...</p>';
+            container.innerHTML = '<p style="color: #666;">⏳ Processando e comprimindo imagem...</p>';
 
             const reader = new FileReader();
             reader.onload = function (e) {
                 const img = new Image();
                 img.onload = function () {
                     // Compress image to reduce size
-                    compressImage(img, file.name, file.type).then(compressed => {
-                        currentImageData = compressed;
-                        imageRemoved = false;
-                        showImagePreview(currentImageData.dataUrl);
+                    compressImage(img, file.name, file.type)
+                        .then(compressed => {
+                            // Verificar se adicionar essa imagem vai estourar o limite
+                            const currentPayloadSize = JSON.stringify(quizData).length;
+                            const newImageSize = compressed.base64.length;
+                            const estimatedTotalSize = currentPayloadSize + newImageSize;
+                            const estimatedTotalMB = (estimatedTotalSize / 1024 / 1024).toFixed(2);
+                            const maxSafeSizeMB = 8;
 
-                        // Show size info
-                        const sizeKB = Math.round((compressed.base64.length * 3) / 4 / 1024);
-                        console.log(`📦 Imagem comprimida: ${sizeKB} KB`);
+                            console.log(`📊 Tamanho atual do payload: ${(currentPayloadSize / 1024 / 1024).toFixed(2)} MB`);
+                            console.log(`📦 Tamanho da nova imagem: ${compressed.sizeKB} KB`);
+                            console.log(`📈 Tamanho estimado total: ${estimatedTotalMB} MB`);
 
-                        if (sizeKB > 500) {
-                            showAlert(`⚠️ Imagem grande (${sizeKB} KB). Considere usar uma imagem menor para evitar problemas.`, 'warning');
-                        }
-                    });
+                            // Se estourar o limite, bloquear o upload
+                            if (estimatedTotalSize > (maxSafeSizeMB * 1024 * 1024)) {
+                                console.error(`❌ BLOQUEADO: Adicionar esta imagem ultrapassaria o limite de ${maxSafeSizeMB} MB`);
+                                showAlert(
+                                    `❌ IMAGEM BLOQUEADA\n\n` +
+                                    `Esta imagem não pode ser adicionada pois ultrapassaria o limite de dados.\n\n` +
+                                    `Tamanho atual: ${(currentPayloadSize / 1024 / 1024).toFixed(2)} MB\n` +
+                                    `Tamanho da imagem: ${compressed.sizeKB} KB\n` +
+                                    `Total estimado: ${estimatedTotalMB} MB\n` +
+                                    `Limite: ${maxSafeSizeMB} MB\n\n` +
+                                    `Sugestões:\n` +
+                                    `• Remova algumas imagens existentes\n` +
+                                    `• Use uma imagem de menor resolução\n` +
+                                    `• Salve o quiz antes de adicionar mais imagens`,
+                                    'error'
+                                );
+
+                                // Resetar o preview para o estado inicial
+                                removeImage();
+                                return;
+                            }
+
+                            // Tudo OK, adicionar a imagem
+                            currentImageData = compressed;
+                            imageRemoved = false;
+                            showImagePreview(currentImageData.dataUrl);
+
+                            console.log(`✅ Imagem adicionada com sucesso: ${compressed.sizeKB} KB`);
+
+                            // Avisar se a imagem ficou grande
+                            if (compressed.sizeKB > 400) {
+                                showAlert(`⚠️ Imagem comprimida: ${compressed.sizeKB} KB\n\nA imagem foi comprimida ao máximo possível, mas ainda ficou relativamente grande.`, 'warning');
+                            }
+                        })
+                        .catch(error => {
+                            // Falha na compressão - imagem muito grande
+                            console.error('❌ Erro ao comprimir imagem:', error);
+                            showAlert(error.message || 'Erro ao processar imagem.', 'error');
+
+                            // Resetar o preview para o estado inicial
+                            removeImage();
+                        });
                 };
                 img.src = e.target.result;
             };
@@ -1058,43 +1112,86 @@
         }
 
         function compressImage(img, originalName, mimeType) {
-            return new Promise((resolve) => {
-                const canvas = document.createElement('canvas');
-                let width = img.width;
-                let height = img.height;
+            return new Promise((resolve, reject) => {
+                // Tentar redução progressiva com diferentes configurações
+                const compressionSettings = [
+                    { maxSize: 800, quality: 0.7, label: 'Padrão (800px, 70%)' },
+                    { maxSize: 600, quality: 0.6, label: 'Média (600px, 60%)' },
+                    { maxSize: 400, quality: 0.5, label: 'Alta (400px, 50%)' },
+                    { maxSize: 300, quality: 0.4, label: 'Máxima (300px, 40%)' }
+                ];
 
-                // Redimensionar se for muito grande (máximo 1200px no lado maior)
-                const maxSize = 1200;
-                if (width > maxSize || height > maxSize) {
-                    if (width > height) {
-                        height = (height / width) * maxSize;
-                        width = maxSize;
-                    } else {
-                        width = (width / height) * maxSize;
-                        height = maxSize;
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const outputMimeType = 'image/jpeg';
+                let bestResult = null;
+
+                for (let i = 0; i < compressionSettings.length; i++) {
+                    const settings = compressionSettings[i];
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Redimensionar se for muito grande
+                    if (width > settings.maxSize || height > settings.maxSize) {
+                        if (width > height) {
+                            height = (height / width) * settings.maxSize;
+                            width = settings.maxSize;
+                        } else {
+                            width = (width / height) * settings.maxSize;
+                            height = settings.maxSize;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL(outputMimeType, settings.quality);
+                    const base64Data = dataUrl.split(',')[1];
+                    const sizeKB = Math.round((base64Data.length * 3) / 4 / 1024);
+
+                    console.log(`🔄 Tentativa ${i + 1}: ${settings.label} = ${sizeKB} KB`);
+
+                    // Se ficou com tamanho aceitável (menos de 400 KB), usar este
+                    if (sizeKB <= 400) {
+                        console.log(`✅ Compressão bem-sucedida: ${sizeKB} KB`);
+                        bestResult = {
+                            filename: generateImageFilename(originalName),
+                            base64: base64Data,
+                            dataUrl: dataUrl,
+                            mimeType: outputMimeType,
+                            originalName: originalName,
+                            sizeKB: sizeKB
+                        };
+                        resolve(bestResult);
+                        return;
+                    }
+
+                    // Guardar o melhor resultado até agora
+                    if (!bestResult || sizeKB < bestResult.sizeKB) {
+                        bestResult = {
+                            filename: generateImageFilename(originalName),
+                            base64: base64Data,
+                            dataUrl: dataUrl,
+                            mimeType: outputMimeType,
+                            originalName: originalName,
+                            sizeKB: sizeKB
+                        };
                     }
                 }
 
-                canvas.width = width;
-                canvas.height = height;
-
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Comprimir como JPEG com qualidade 0.85 (ou PNG se for PNG)
-                const outputMimeType = mimeType.includes('png') ? 'image/png' : 'image/jpeg';
-                const quality = 0.85;
-                const dataUrl = canvas.toDataURL(outputMimeType, quality);
-                const base64Data = dataUrl.split(',')[1];
-                const filename = generateImageFilename(originalName);
-
-                resolve({
-                    filename: filename,
-                    base64: base64Data,
-                    dataUrl: dataUrl,
-                    mimeType: outputMimeType,
-                    originalName: originalName
-                });
+                // Se chegou aqui, nenhuma configuração deixou a imagem pequena o suficiente
+                // Mas vamos verificar se o melhor resultado é aceitável (menos de 600 KB)
+                if (bestResult && bestResult.sizeKB <= 600) {
+                    console.log(`⚠️ Imagem comprimida com sucesso, mas ficou maior que o ideal: ${bestResult.sizeKB} KB`);
+                    resolve(bestResult);
+                } else {
+                    console.error(`❌ Imagem muito grande mesmo após todas as tentativas: ${bestResult ? bestResult.sizeKB : 'N/A'} KB`);
+                    reject({
+                        message: `Imagem muito grande (${bestResult ? bestResult.sizeKB : 'N/A'} KB). O tamanho máximo recomendado é 600 KB.\n\nPor favor, use uma imagem menor ou de menor resolução.`,
+                        sizeKB: bestResult ? bestResult.sizeKB : null
+                    });
+                }
             });
         }
 
@@ -1663,8 +1760,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 processImagesForSaving();
 
                 // Determinar o método HTTP correto
-                // PATCH para servidor customizado (CloudFront/S3), PUT para JSONBin
-                const method = API_CONFIG.apiType === 'customServer' ? 'PATCH' : 'PUT';
+                const method = 'PUT';
 
                 const url = getUpdateURL('quiz');
                 const headers = getRequestHeaders(true);
@@ -1677,10 +1773,22 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 console.log(`📦 Payload size: ${payloadSize} bytes (${payloadMB} MB)`);
                 console.log(`📝 Payload completo (primeiros 500 chars):`, JSON.stringify(quizData).substring(0, 500));
 
-                // Avisar se o payload estiver muito grande
-                if (payloadSize > 10 * 1024 * 1024) {
-                    console.warn(`⚠️ Payload muito grande: ${payloadMB} MB. Pode falhar!`);
-                    showAlert(`⚠️ Dados muito grandes (${payloadMB} MB). Considere reduzir o número de imagens ou usar imagens menores.`, 'warning');
+                // Limite de segurança: 8 MB para deixar margem dos 10 MB do JSONBin Pro
+                const maxSafeSizeMB = 8;
+                const maxSafeSize = maxSafeSizeMB * 1024 * 1024;
+
+                if (payloadSize > maxSafeSize) {
+                    const errorMsg = `❌ ERRO: Payload muito grande (${payloadMB} MB)!\n\nLimite de segurança: ${maxSafeSizeMB} MB\nLimite do JSONBin Pro: 10 MB\n\nPor favor, remova algumas imagens ou use imagens menores.`;
+                    console.error(errorMsg);
+                    setStatus('error', `❌ Dados muito grandes: ${payloadMB} MB`);
+                    showAlert(errorMsg, 'error');
+                    return;
+                }
+
+                // Avisar se estiver próximo do limite (> 7 MB)
+                if (payloadSize > 7 * 1024 * 1024) {
+                    console.warn(`⚠️ Atenção: Payload grande (${payloadMB} MB). Próximo do limite de ${maxSafeSizeMB} MB!`);
+                    showAlert(`⚠️ Atenção: Dados grandes (${payloadMB} MB). Você está próximo do limite de ${maxSafeSizeMB} MB.`, 'warning');
                 }
 
                 const response = await fetch(url, {
@@ -1733,14 +1841,14 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                                 Perguntas: ${questionCountAfter} (era ${questionCountBefore})
                                 Dados completos:`, savedData);
 
-                            if (groupCountAfter !== groupCountBefore || questionCountAfter !== questionCountBefore) {
-                                console.warn(`⚠️ DADOS VERIFICADOS: Alterações confirmadas!`);
+                            // Comparar JSON stringificado para detectar mudanças reais
+                            const dataBeforeString = JSON.stringify(dataBeforeSave);
+                            const dataAfterString = JSON.stringify(savedData);
+
+                            if (dataBeforeString !== dataAfterString) {
+                                console.log(`✅ DADOS VERIFICADOS: Alterações confirmadas e persistidas!`);
                             } else {
-                                console.error(`❌ ERRO CRÍTICO: Servidor aceitou PUT mas NÃO salvou os dados!
-                                    - O servidor pode estar configurado como somente leitura
-                                    - O S3 pode não ter permissões de escrita
-                                    - Recomendação: Use JSONBin.io`);
-                                showAlert('⚠️ Aviso: Servidor aceitou os dados mas pode não ter salvado. Verifique se as alterações persistem após recarregar.', 'warning');
+                                console.warn(`⚠️ Dados parecem idênticos - pode ser que não tenha havido mudanças ou servidor não salvou.`);
                             }
                         }
                     } catch (verifyError) {
@@ -1820,6 +1928,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
         // Group management functions
         function addGroup() {
             const groupName = document.getElementById('groupName').value.trim();
+            const groupIntroMessage = document.getElementById('groupIntroMessage').value.trim();
             const groupMessage = document.getElementById('groupMessage').value.trim();
 
             if (!groupMessage) {
@@ -1847,6 +1956,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             const newGroup = {
                 id: 'group' + (Date.now()),
                 name: groupName || '', // Vazio = usa "Grupo X"
+                introductionMessage: groupIntroMessage || '',
                 completionMessage: groupMessage,
                 questions: []
             };
@@ -1876,6 +1986,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             document.getElementById('groupFormTitle').textContent = '✏️ Editar Grupo';
 
             document.getElementById('groupName').value = group.name || '';
+            document.getElementById('groupIntroMessage').value = group.introductionMessage || '';
             document.getElementById('groupMessage').value = group.completionMessage || '';
 
             document.getElementById('groupFormActions').innerHTML = `
@@ -1892,6 +2003,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
         function updateGroup() {
             const groupName = document.getElementById('groupName').value.trim();
+            const groupIntroMessage = document.getElementById('groupIntroMessage').value.trim();
             const groupMessage = document.getElementById('groupMessage').value.trim();
 
             if (!groupMessage) {
@@ -1906,6 +2018,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             }
 
             quizData.groups[groupIndex].name = groupName || '';
+            quizData.groups[groupIndex].introductionMessage = groupIntroMessage || '';
             quizData.groups[groupIndex].completionMessage = groupMessage;
 
             clearGroupForm();
@@ -1953,6 +2066,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
         function clearGroupForm() {
             document.getElementById('groupName').value = '';
+            document.getElementById('groupIntroMessage').value = '';
             document.getElementById('groupMessage').value = '';
         }
 
@@ -2442,7 +2556,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             document.getElementById('option2').value = '';
             document.getElementById('option3').value = '';
             document.getElementById('category').value = '';
-            document.getElementById('timeSeconds').value = '20';
+            document.getElementById('timeSeconds').value = '150';
 
             // Clear radio buttons
             const checkedRadio = document.querySelector('input[name="correctOption"]:checked');
@@ -2604,6 +2718,26 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             document.getElementById('totalQuestions').textContent = totalQuestions;
             document.getElementById('categoriesCount').textContent = categories;
             document.getElementById('avgTime').textContent = avgTime + 's';
+
+            // Calcular tamanho do payload
+            const payloadSize = JSON.stringify(quizData).length;
+            const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
+            const maxSafeSizeMB = 8;
+            const usagePercent = (payloadSize / (maxSafeSizeMB * 1024 * 1024)) * 100;
+
+            document.getElementById('payloadSize').textContent = payloadMB + ' MB';
+
+            // Mudar cor do card baseado no uso
+            const card = document.getElementById('payloadSizeCard');
+            if (usagePercent > 90) {
+                card.style.background = 'linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%)'; // Vermelho
+            } else if (usagePercent > 75) {
+                card.style.background = 'linear-gradient(135deg, #ffa726 0%, #fb8c00 100%)'; // Laranja
+            } else if (usagePercent > 50) {
+                card.style.background = 'linear-gradient(135deg, #ffd93d 0%, #f9ca24 100%)'; // Amarelo
+            } else {
+                card.style.background = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'; // Azul (normal)
+            }
         }
 
         function setStatus(type, message) {
