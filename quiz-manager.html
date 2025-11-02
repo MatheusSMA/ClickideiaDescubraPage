@@ -1920,6 +1920,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
         /**
          * Carrega as imagens de todos os grupos dos bins separados e reconstrói o base64 nas questões
          * Isso permite que o manager exiba as imagens normalmente
+         * Carrega tanto bins principais quanto bins extras
          */
         async function loadAllGroupImages() {
             if (!quizData || !quizData.groups) return;
@@ -1944,7 +1945,10 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     continue;
                 }
 
+                const imagesMap = {};
+
                 try {
+                    // Carregar bin principal
                     const url = `${API_CONFIG.jsonbin.baseUrl}/${binId}/latest`;
                     const response = await fetch(url, {
                         method: 'GET',
@@ -1957,34 +1961,72 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
                     if (response.ok) {
                         const data = await response.json();
-                        const imagesMap = {};
 
-                        // Criar mapa de imageId -> dados da imagem
+                        // Adicionar imagens do bin principal ao mapa
                         if (data.images) {
                             data.images.forEach(img => {
                                 imagesMap[img.imageId] = img;
                             });
                         }
 
-                        // Hidratar questões com base64
-                        if (group.questions) {
-                            group.questions.forEach(question => {
-                                if (question.imageId && imagesMap[question.imageId]) {
-                                    const imgData = imagesMap[question.imageId];
-                                    question.imageBase64 = imgData.base64;
-                                    question.imageMimeType = imgData.mimeType;
-                                    question.imageFilename = imgData.filename;
-                                    question.imageOriginalName = imgData.originalName;
-                                }
-                            });
-                        }
-
-                        console.log(`✅ Imagens do grupo ${groupIndex + 1} carregadas: ${Object.keys(imagesMap).length} imagens`);
+                        console.log(`✅ Bin principal do grupo ${groupIndex + 1}: ${data.images?.length || 0} imagens`);
                     } else if (response.status === 404) {
-                        console.log(`📭 Bin de imagens vazio para grupo ${groupIndex + 1} (404 - normal)`);
+                        console.log(`📭 Bin principal vazio para grupo ${groupIndex + 1} (404)`);
                     } else {
-                        console.error(`❌ Erro ao carregar imagens do grupo ${groupIndex + 1}: ${response.status}`);
+                        console.error(`❌ Erro ao carregar bin principal do grupo ${groupIndex + 1}: ${response.status}`);
                     }
+
+                    // Carregar bins extras se existirem
+                    if (quizData.extraImageBins && quizData.extraImageBins[groupIndex]) {
+                        const extraBinIds = quizData.extraImageBins[groupIndex];
+                        console.log(`🔄 Carregando ${extraBinIds.length} bin(s) extra(s) do grupo ${groupIndex + 1}...`);
+
+                        for (let i = 0; i < extraBinIds.length; i++) {
+                            const extraBinId = extraBinIds[i];
+                            if (!extraBinId) continue;
+
+                            try {
+                                const extraUrl = `${API_CONFIG.jsonbin.baseUrl}/${extraBinId}/latest`;
+                                const extraResponse = await fetch(extraUrl, {
+                                    method: 'GET',
+                                    headers: {
+                                        'X-Master-Key': API_CONFIG.jsonbin.apiKey,
+                                        'Accept': 'application/json',
+                                        'X-Bin-Meta': 'false'
+                                    }
+                                });
+
+                                if (extraResponse.ok) {
+                                    const extraData = await extraResponse.json();
+                                    if (extraData.images) {
+                                        extraData.images.forEach(img => {
+                                            imagesMap[img.imageId] = img;
+                                        });
+                                    }
+                                    console.log(`✅ Bin extra ${i + 1} do grupo ${groupIndex + 1}: ${extraData.images?.length || 0} imagens`);
+                                }
+                            } catch (extraError) {
+                                console.error(`❌ Erro ao carregar bin extra ${i + 1} do grupo ${groupIndex + 1}:`, extraError);
+                            }
+                        }
+                    }
+
+                    // Hidratar questões com base64 de todos os bins (principal + extras)
+                    if (group.questions) {
+                        group.questions.forEach(question => {
+                            if (question.imageId && imagesMap[question.imageId]) {
+                                const imgData = imagesMap[question.imageId];
+                                question.imageBase64 = imgData.base64;
+                                question.imageMimeType = imgData.mimeType;
+                                question.imageFilename = imgData.filename;
+                                question.imageOriginalName = imgData.originalName;
+                            }
+                        });
+                    }
+
+                    const totalImages = Object.keys(imagesMap).length;
+                    console.log(`✅ Total de imagens do grupo ${groupIndex + 1}: ${totalImages}`);
+
                 } catch (error) {
                     console.error(`❌ Erro ao carregar imagens do grupo ${groupIndex + 1}:`, error);
                 }
@@ -1997,6 +2039,76 @@ Registration URL: ${baseUrl}${registrationEndpoint}
          * Salva as imagens de cada grupo em bins separados (1 MB cada)
          * Cada grupo tem seu próprio bin de imagens no JSONBin
          */
+        /**
+         * Cria um novo bin no JSONBin.io
+         * @param {string} binName - Nome do bin
+         * @param {object} initialData - Dados iniciais do bin
+         * @returns {Promise<string>} - ID do bin criado
+         */
+        async function createNewBin(binName, initialData) {
+            const url = `${API_CONFIG.jsonbin.baseUrl}`;
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Master-Key': API_CONFIG.jsonbin.apiKey,
+                    'X-Bin-Name': binName,
+                    'X-Bin-Private': 'true'
+                },
+                body: JSON.stringify(initialData)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Falha ao criar bin: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            console.log(`✅ Bin criado: ${binName} (ID: ${result.metadata.id})`);
+            return result.metadata.id;
+        }
+
+        /**
+         * Divide imagens em chunks de no máximo 900 KB (margem de segurança do limite de 1 MB)
+         */
+        function splitImagesIntoChunks(images, maxSizeBytes = 900 * 1024) {
+            const chunks = [];
+            let currentChunk = [];
+            let currentSize = 0;
+
+            for (const image of images) {
+                const imageSize = JSON.stringify(image).length;
+
+                // Se a imagem sozinha já excede o limite, adiciona em chunk separado
+                if (imageSize > maxSizeBytes) {
+                    console.warn(`⚠️ Imagem ${image.imageId} muito grande (${(imageSize/1024).toFixed(0)} KB)`);
+                    if (currentChunk.length > 0) {
+                        chunks.push(currentChunk);
+                        currentChunk = [];
+                        currentSize = 0;
+                    }
+                    chunks.push([image]);
+                    continue;
+                }
+
+                // Se adicionar esta imagem ultrapassar o limite, inicia novo chunk
+                if (currentSize + imageSize > maxSizeBytes && currentChunk.length > 0) {
+                    chunks.push(currentChunk);
+                    currentChunk = [];
+                    currentSize = 0;
+                }
+
+                currentChunk.push(image);
+                currentSize += imageSize;
+            }
+
+            if (currentChunk.length > 0) {
+                chunks.push(currentChunk);
+            }
+
+            return chunks;
+        }
+
         async function saveGroupImages() {
             if (API_CONFIG.apiType !== 'jsonbin') {
                 console.log('⏭️ Sistema de imagens separadas só funciona com JSONBin');
@@ -2006,9 +2118,12 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             console.log('🖼️ Salvando imagens em bins separados por grupo...');
 
             try {
-                // Preparar dados de imagens por grupo
-                const groupImagesData = [];
+                // Inicializar estrutura de bins extras se não existir
+                if (!quizData.extraImageBins) {
+                    quizData.extraImageBins = {};
+                }
 
+                // Preparar dados de imagens por grupo
                 for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 5; groupIndex++) {
                     const group = quizData.groups[groupIndex];
                     const imagesForGroup = [];
@@ -2028,55 +2143,94 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                         });
                     }
 
-                    groupImagesData.push({
-                        groupIndex: groupIndex,
-                        images: imagesForGroup
-                    });
-                }
-
-                // Salvar cada bin de imagens
-                for (const groupData of groupImagesData) {
-                    const binIdKey = `group${groupData.groupIndex + 1}ImagesBinId`;
-                    const binId = API_CONFIG.jsonbin[binIdKey];
-
-                    if (!binId) {
-                        console.warn(`⚠️ Bin ID não configurado para grupo ${groupData.groupIndex + 1}`);
+                    if (imagesForGroup.length === 0) {
+                        console.log(`⏭️ Grupo ${groupIndex + 1}: sem imagens para salvar`);
                         continue;
                     }
 
-                    const url = `${API_CONFIG.jsonbin.baseUrl}/${binId}`;
-                    const payload = { images: groupData.images };
-                    const payloadSize = JSON.stringify(payload).length;
-                    const payloadKB = (payloadSize / 1024).toFixed(2);
+                    // Dividir em chunks de 900 KB
+                    const chunks = splitImagesIntoChunks(imagesForGroup);
+                    console.log(`📦 Grupo ${groupIndex + 1}: ${imagesForGroup.length} imagens divididas em ${chunks.length} bin(s)`);
 
-                    console.log(`📤 Salvando ${groupData.images.length} imagens do grupo ${groupData.groupIndex + 1} (${payloadKB} KB)`);
+                    // Salvar primeiro chunk no bin principal
+                    const binIdKey = `group${groupIndex + 1}ImagesBinId`;
+                    const binId = API_CONFIG.jsonbin[binIdKey];
 
-                    // Limite de 1 MB por bin
-                    if (payloadSize > 1024 * 1024) {
-                        const errorMsg = `❌ Grupo ${groupData.groupIndex + 1} excede 1 MB (${payloadKB} KB)! Reduza a quantidade ou qualidade das imagens.`;
-                        console.error(errorMsg);
-                        showAlert(errorMsg, 'error');
-                        return false;
+                    if (!binId) {
+                        console.warn(`⚠️ Bin ID não configurado para grupo ${groupIndex + 1}`);
+                        continue;
                     }
 
-                    const response = await fetch(url, {
+                    // Salvar bin principal (primeiro chunk)
+                    const mainPayload = { images: chunks[0] };
+                    const mainSize = JSON.stringify(mainPayload).length;
+                    console.log(`📤 Salvando ${chunks[0].length} imagens no bin principal do grupo ${groupIndex + 1} (${(mainSize/1024).toFixed(0)} KB)`);
+
+                    const mainResponse = await fetch(`${API_CONFIG.jsonbin.baseUrl}/${binId}`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-Master-Key': API_CONFIG.jsonbin.apiKey,
                             'X-Bin-Meta': 'false'
                         },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(mainPayload)
                     });
 
-                    if (!response.ok) {
-                        const errorMsg = `Erro ao salvar imagens do grupo ${groupData.groupIndex + 1}: ${response.status} ${response.statusText}`;
+                    if (!mainResponse.ok) {
+                        const errorMsg = `Erro ao salvar bin principal do grupo ${groupIndex + 1}: ${mainResponse.status}`;
                         console.error(errorMsg);
                         showAlert(errorMsg, 'error');
                         return false;
                     }
 
-                    console.log(`✅ Imagens do grupo ${groupData.groupIndex + 1} salvas com sucesso`);
+                    console.log(`✅ Bin principal do grupo ${groupIndex + 1} salvo`);
+
+                    // Salvar chunks extras em bins separados
+                    if (chunks.length > 1) {
+                        console.log(`🔄 Criando ${chunks.length - 1} bin(s) extra(s) para grupo ${groupIndex + 1}...`);
+
+                        // Inicializar array de bins extras para este grupo
+                        if (!quizData.extraImageBins[groupIndex]) {
+                            quizData.extraImageBins[groupIndex] = [];
+                        }
+
+                        // Processar chunks extras (índice 1 em diante)
+                        for (let chunkIndex = 1; chunkIndex < chunks.length; chunkIndex++) {
+                            const chunk = chunks[chunkIndex];
+                            const binName = `ExtraGroupImages${groupIndex}_${chunkIndex}`;
+
+                            // Verificar se já existe um bin extra para este chunk
+                            let extraBinId = quizData.extraImageBins[groupIndex][chunkIndex - 1];
+
+                            if (!extraBinId) {
+                                // Criar novo bin
+                                console.log(`🆕 Criando novo bin: ${binName}`);
+                                extraBinId = await createNewBin(binName, { images: chunk });
+                                quizData.extraImageBins[groupIndex][chunkIndex - 1] = extraBinId;
+                            } else {
+                                // Atualizar bin existente
+                                console.log(`📤 Atualizando bin extra: ${binName} (${extraBinId})`);
+                                const extraPayload = { images: chunk };
+                                const extraResponse = await fetch(`${API_CONFIG.jsonbin.baseUrl}/${extraBinId}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-Master-Key': API_CONFIG.jsonbin.apiKey,
+                                        'X-Bin-Meta': 'false'
+                                    },
+                                    body: JSON.stringify(extraPayload)
+                                });
+
+                                if (!extraResponse.ok) {
+                                    console.error(`❌ Erro ao atualizar bin extra ${binName}`);
+                                    return false;
+                                }
+                            }
+
+                            const chunkSize = JSON.stringify({ images: chunk }).length;
+                            console.log(`✅ Bin extra ${binName} salvo: ${chunk.length} imagens (${(chunkSize/1024).toFixed(0)} KB)`);
+                        }
+                    }
                 }
 
                 console.log('✅ Todas as imagens salvas nos bins separados');
@@ -3175,14 +3329,23 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     });
                 }
 
-                // Calcular tamanho
-                const groupPayload = JSON.stringify({ images: groupImages });
-                const sizeBytes = groupPayload.length;
-                const sizeKB = (sizeBytes / 1024).toFixed(0);
-                const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2);
-                const percentage = Math.min(100, (sizeBytes / limitBytes) * 100);
+                // Dividir em chunks para ver quantos bins serão usados
+                const chunks = splitImagesIntoChunks(groupImages);
+                const totalBins = chunks.length || 0;
 
-                // Determinar classe de cor
+                // Calcular tamanho do maior bin
+                let maxChunkSize = 0;
+                chunks.forEach(chunk => {
+                    const chunkSize = JSON.stringify({ images: chunk }).length;
+                    if (chunkSize > maxChunkSize) {
+                        maxChunkSize = chunkSize;
+                    }
+                });
+
+                const percentage = Math.min(100, (maxChunkSize / limitBytes) * 100);
+                const largestBinKB = (maxChunkSize / 1024).toFixed(0);
+
+                // Determinar classe de cor baseado no maior bin
                 let barClass = 'low';
                 if (percentage >= 80) {
                     barClass = 'high';
@@ -3193,12 +3356,13 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 // Nome do grupo
                 const groupName = group.name || `Grupo ${index + 1}`;
                 const imageCount = groupImages.length;
+                const binsInfo = totalBins > 1 ? ` • ${totalBins} bins` : '';
 
                 html += `
                     <div class="storage-item">
                         <div class="storage-header">
                             <span class="storage-group-name">${groupName}</span>
-                            <span class="storage-size-info">${imageCount} ${imageCount === 1 ? 'imagem' : 'imagens'} • ${sizeKB} KB / 1024 KB</span>
+                            <span class="storage-size-info">${imageCount} ${imageCount === 1 ? 'imagem' : 'imagens'}${binsInfo} • Maior bin: ${largestBinKB} KB / 1024 KB</span>
                         </div>
                         <div class="storage-bar-container">
                             <div class="storage-bar ${barClass}" style="width: ${percentage}%">
