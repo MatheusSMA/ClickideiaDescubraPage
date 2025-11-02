@@ -1328,6 +1328,7 @@
             container.innerHTML = `
                 <img src="${imageSrc}" alt="Preview" class="image-preview">
                 <br>
+                <input type="file" id="questionImage" accept="image/*" style="display: none;">
                 <button type="button" class="image-upload-btn" onclick="document.getElementById('questionImage').click()">
                     🔄 Trocar Imagem
                 </button>
@@ -1338,6 +1339,8 @@
                     ${currentImageData.originalName}
                 </p>
             `;
+            // Reattach event listener to the new input
+            document.getElementById('questionImage').addEventListener('change', handleImageUpload);
         }
 
         function removeImage() {
@@ -2811,6 +2814,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                         <p style="margin: 0; color: #666;">🖼️ Imagem vinculada: <strong>${question.imageFilename}</strong></p>
                         <small style="color: #999;">Para alterar, faça upload de uma nova imagem</small>
                         <br><br>
+                        <input type="file" id="questionImage" accept="image/*" style="display: none;">
                         <button type="button" class="image-upload-btn" onclick="document.getElementById('questionImage').click()">
                             🔄 Trocar Imagem
                         </button>
@@ -2819,6 +2823,8 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                         </button>
                     </div>
                 `;
+                // Reattach event listener to the new input
+                document.getElementById('questionImage').addEventListener('change', handleImageUpload);
                 currentImageData = null;
             } else {
                 removeImage();
