@@ -1928,7 +1928,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
             console.log('🖼️ Carregando imagens dos bins separados...');
 
-            for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 6; groupIndex++) {
+            for (let groupIndex = 0; groupIndex < quizData.groups.length; groupIndex++) {
                 const group = quizData.groups[groupIndex];
 
                 // Verificar se alguma questão tem imageId (novo sistema)
@@ -2125,7 +2125,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 }
 
                 // Preparar dados de imagens por grupo
-                for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 6; groupIndex++) {
+                for (let groupIndex = 0; groupIndex < quizData.groups.length; groupIndex++) {
                     const group = quizData.groups[groupIndex];
                     const imagesForGroup = [];
 
