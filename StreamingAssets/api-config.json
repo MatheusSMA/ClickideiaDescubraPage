@@ -5,13 +5,18 @@
     "baseUrl": "https://api.jsonbin.io/v3/b",
     "quizBinId": "68e7598543b1c97be95fbb4d",
     "rankingBinId": "68e75972ae596e708f0b701f",
-    "registrationBinId": "68ed827aae596e708f1217dc"
+    "registrationBinId": "68ed827aae596e708f1217dc",
+    "group1ImagesBinId": "6906ba3e43b1c97be99255f0",
+    "group2ImagesBinId": "6906ba51d0ea881f40cd502c",
+    "group3ImagesBinId": "6906ba5dd0ea881f40cd504c",
+    "group4ImagesBinId": "6906ba63ae596e708f3e0ec2",
+    "group5ImagesBinId": "6906ba6bd0ea881f40cd5071"
   },
   "customServer": {
     "baseUrl": "https://jogos.clickideia.com.br",
-    "quizEndpoint": "/QuizData.json",
-    "rankingEndpoint": "/RankingData.json",
-    "registrationEndpoint": "/Register.json"
+    "quizEndpoint": "/QuizData.php",
+    "rankingEndpoint": "/Ranking.php",
+    "registrationEndpoint": "/Register.php"
   },
   "_comments": {
     "apiType": "Tipo de API: 'jsonbin' ou 'customServer'",
