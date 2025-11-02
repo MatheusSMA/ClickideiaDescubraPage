@@ -668,7 +668,7 @@
 
                 <!-- Groups List -->
                 <div class="section">
-                    <h2 class="section-title">📂 Grupos Existentes (máximo 5)</h2>
+                    <h2 class="section-title">📂 Grupos Existentes (máximo 6)</h2>
                     <div id="groupsList">
                         <!-- Groups will be loaded here -->
                     </div>
@@ -1045,7 +1045,8 @@
                 group2ImagesBinId: '6906ba51d0ea881f40cd502c',
                 group3ImagesBinId: '6906ba5dd0ea881f40cd504c',
                 group4ImagesBinId: '6906ba63ae596e708f3e0ec2',
-                group5ImagesBinId: '6906ba6bd0ea881f40cd5071'
+                group5ImagesBinId: '6906ba6bd0ea881f40cd5071',
+                group6ImagesBinId: '6906ec45d0ea881f40cdde91'
             },
             customServer: {
                 baseUrl: 'https://jogos.clickideia.com.br',
@@ -1927,7 +1928,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
             console.log('🖼️ Carregando imagens dos bins separados...');
 
-            for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 5; groupIndex++) {
+            for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 6; groupIndex++) {
                 const group = quizData.groups[groupIndex];
 
                 // Verificar se alguma questão tem imageId (novo sistema)
@@ -2124,7 +2125,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 }
 
                 // Preparar dados de imagens por grupo
-                for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 5; groupIndex++) {
+                for (let groupIndex = 0; groupIndex < quizData.groups.length && groupIndex < 6; groupIndex++) {
                     const group = quizData.groups[groupIndex];
                     const imagesForGroup = [];
 
@@ -2188,6 +2189,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     // Salvar chunks extras em bins separados
                     if (chunks.length > 1) {
                         console.log(`🔄 Criando ${chunks.length - 1} bin(s) extra(s) para grupo ${groupIndex + 1}...`);
+                        showAlert(`⚠️ Grupo ${groupIndex + 1} excedeu 900 KB. Criando ${chunks.length - 1} bin(s) extra(s)...`, 'warning');
 
                         // Inicializar array de bins extras para este grupo
                         if (!quizData.extraImageBins[groupIndex]) {
@@ -2205,8 +2207,10 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                             if (!extraBinId) {
                                 // Criar novo bin
                                 console.log(`🆕 Criando novo bin: ${binName}`);
+                                showLoadingOverlay(`Criando bin extra: ${binName}...`);
                                 extraBinId = await createNewBin(binName, { images: chunk });
                                 quizData.extraImageBins[groupIndex][chunkIndex - 1] = extraBinId;
+                                console.log(`✅ Bin ${binName} criado com ID: ${extraBinId}`);
                             } else {
                                 // Atualizar bin existente
                                 console.log(`📤 Atualizando bin extra: ${binName} (${extraBinId})`);
@@ -2512,8 +2516,8 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 quizData.groups = [];
             }
 
-            if (quizData.groups.length >= 5) {
-                showAlert('Máximo de 5 grupos atingido!', 'error');
+            if (quizData.groups.length >= 6) {
+                showAlert('Máximo de 6 grupos atingido!', 'error');
                 return;
             }
 
@@ -3312,7 +3316,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             let html = '';
             const limitBytes = 1024 * 1024; // 1 MB
 
-            quizData.groups.slice(0, 5).forEach((group, index) => {
+            quizData.groups.slice(0, 6).forEach((group, index) => {
                 // Coletar imagens do grupo
                 const groupImages = [];
                 if (group.questions) {
