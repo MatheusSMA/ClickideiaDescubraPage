@@ -1,5 +1,5 @@
 {
-  "apiType": "jsonbin",
+  "apiType": "customServer",
   "jsonbin": {
     "apiKey": "$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y",
     "baseUrl": "https://api.jsonbin.io/v3/b",
@@ -16,7 +16,7 @@
   "customServer": {
     "baseUrl": "https://jogos.clickideia.com.br",
     "quizEndpoint": "/QuizData.php",
-    "rankingEndpoint": "/Ranking.php",
+    "rankingEndpoint": "/RankingData.php",
     "registrationEndpoint": "/Register.php"
   },
   "_comments": {

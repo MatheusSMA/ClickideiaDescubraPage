@@ -473,110 +473,75 @@
             margin: 10px 0;
         }
 
-        /* Group Storage Progress Bars */
-        .storage-item {
-            margin-bottom: 20px;
-        }
-
-        .storage-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-
-        .storage-group-name {
-            font-weight: 600;
-            color: #495057;
-            font-size: 14px;
-        }
-
-        .storage-size-info {
-            font-size: 13px;
-            color: #666;
-        }
-
-        .storage-bar-container {
-            height: 24px;
-            background: #e9ecef;
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .storage-bar {
-            height: 100%;
-            border-radius: 12px;
-            transition: width 0.3s ease, background 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            color: white;
-        }
-
-        .storage-bar.low {
-            background: linear-gradient(90deg, #51cf66 0%, #40c057 100%);
-        }
-
-        .storage-bar.medium {
-            background: linear-gradient(90deg, #ffd43b 0%, #ffc107 100%);
-        }
-
-        .storage-bar.high {
-            background: linear-gradient(90deg, #ff8787 0%, #ff6b6b 100%);
-        }
-
-        /* Loading overlay */
+        /* Loading Overlay */
         .loading-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
             justify-content: center;
             align-items: center;
-            z-index: 9999;
         }
 
         .loading-overlay.active {
             display: flex;
         }
 
-        .loading-content {
+        .loading-popup {
             background: white;
-            padding: 30px 40px;
-            border-radius: 12px;
-            text-align: center;
+            padding: 40px;
+            border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            min-width: 300px;
         }
 
-        .loading-content .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border-width: 4px;
-            margin: 0 auto 15px auto;
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
         }
 
-        .loading-content p {
-            margin: 0;
-            font-size: 16px;
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            font-size: 18px;
             font-weight: 600;
-            color: #495057;
+            color: #333;
+            margin-top: 15px;
+        }
+
+        .loading-subtext {
+            font-size: 14px;
+            color: #666;
+            margin-top: 8px;
         }
     </style>
 </head>
 
 <body>
     <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-content">
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-popup">
             <div class="loading-spinner"></div>
-            <p id="loadingMessage">Salvando...</p>
+            <div class="loading-text" id="loadingText">Salvando questões...</div>
+            <div class="loading-subtext" id="loadingSubtext">Aguarde, processando imagem</div>
         </div>
     </div>
 
@@ -607,6 +572,7 @@
             <button class="tab" onclick="switchTab('questions')">📝 Perguntas</button>
             <button class="tab" onclick="switchTab('schedule')">⏰ Agendamento</button>
             <button class="tab" onclick="switchTab('ranking')">🏆 Ranking</button>
+            <button class="tab" onclick="switchTab('registrations')">👥 Cadastros & Ranking</button>
             <button class="tab" onclick="switchTab('config')">⚙️ Configurações</button>
         </div>
 
@@ -648,14 +614,18 @@
 
                         <div class="form-group">
                             <label for="groupIntroMessage">Mensagem de Apresentação:</label>
-                            <textarea id="groupIntroMessage" placeholder="Mensagem exibida ANTES de iniciar este grupo..."></textarea>
-                            <small style="color: #666;">Aparece na tela de transição antes de começar as perguntas do grupo.</small>
+                            <textarea id="groupIntroMessage"
+                                placeholder="Mensagem exibida ANTES de iniciar este grupo..."></textarea>
+                            <small style="color: #666;">Aparece na tela de transição antes de começar as perguntas do
+                                grupo.</small>
                         </div>
 
                         <div class="form-group">
                             <label for="groupMessage">Mensagem de Conclusão:</label>
-                            <textarea id="groupMessage" placeholder="Mensagem exibida ao completar este grupo..."></textarea>
-                            <small style="color: #666;">Aparece na tela de transição após completar todas as perguntas.</small>
+                            <textarea id="groupMessage"
+                                placeholder="Mensagem exibida ao completar este grupo..."></textarea>
+                            <small style="color: #666;">Aparece na tela de transição após completar todas as
+                                perguntas.</small>
                         </div>
 
                         <div id="groupFormActions">
@@ -680,82 +650,83 @@
                 <!-- Add/Edit Question Form -->
                 <div class="section">
                     <h2 class="section-title" id="formTitle">➕ Adicionar Nova Pergunta</h2>
-                <div class="question-form">
-                    <div class="form-group">
-                        <label for="questionText">Pergunta:</label>
-                        <textarea id="questionText" placeholder="Digite sua pergunta aqui..."></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Imagem da Pergunta (opcional):</label>
-                        <div class="image-upload-group" id="imageUploadArea">
-                            <div id="imagePreviewContainer">
-                                <p>🖼️ Clique para adicionar uma imagem ou arraste aqui</p>
-                                <input type="file" id="questionImage" accept="image/*" style="display: none;">
-                                <button type="button" class="image-upload-btn"
-                                    onclick="document.getElementById('questionImage').click()">
-                                    📎 Escolher Imagem
-                                </button>
-                            </div>
+                    <div class="question-form">
+                        <div class="form-group">
+                            <label for="questionText">Pergunta:</label>
+                            <textarea id="questionText" placeholder="Digite sua pergunta aqui..."></textarea>
                         </div>
-                        <small style="color: #666;">Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB</small>
-                    </div>
 
-                    <div class="form-group">
-                        <label>Opções de Resposta:</label>
-                        <div class="options-grid">
-                            <div class="option-input">
-                                <input type="radio" name="correctOption" value="0" id="correct0">
-                                <input type="text" id="option0" placeholder="Opção 1">
+                        <div class="form-group">
+                            <label>Imagem da Pergunta (opcional):</label>
+                            <div class="image-upload-group" id="imageUploadArea">
+                                <div id="imagePreviewContainer">
+                                    <p>🖼️ Clique para adicionar uma imagem ou arraste aqui</p>
+                                    <input type="file" id="questionImage" accept="image/*" style="display: none;">
+                                    <button type="button" class="image-upload-btn"
+                                        onclick="document.getElementById('questionImage').click()">
+                                        📎 Escolher Imagem
+                                    </button>
+                                </div>
                             </div>
-                            <div class="option-input">
-                                <input type="radio" name="correctOption" value="1" id="correct1">
-                                <input type="text" id="option1" placeholder="Opção 2">
-                            </div>
-                            <div class="option-input">
-                                <input type="radio" name="correctOption" value="2" id="correct2">
-                                <input type="text" id="option2" placeholder="Opção 3">
-                            </div>
-                            <div class="option-input">
-                                <input type="radio" name="correctOption" value="3" id="correct3">
-                                <input type="text" id="option3" placeholder="Opção 4">
-                            </div>
+                            <small style="color: #666;">Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 2MB</small>
                         </div>
-                        <small style="color: #666;">Selecione o botão de rádio da resposta correta</small>
-                    </div>
 
-                    <div class="form-group">
-                        <label for="questionGroup">Grupo:</label>
-                        <select id="questionGroup">
-                            <option value="">Selecione um grupo...</option>
-                        </select>
-                        <small style="color: #666;">Selecione em qual grupo esta pergunta pertence</small>
-                    </div>
+                        <div class="form-group">
+                            <label>Opções de Resposta:</label>
+                            <div class="options-grid">
+                                <div class="option-input">
+                                    <input type="radio" name="correctOption" value="0" id="correct0">
+                                    <input type="text" id="option0" placeholder="Opção 1">
+                                </div>
+                                <div class="option-input">
+                                    <input type="radio" name="correctOption" value="1" id="correct1">
+                                    <input type="text" id="option1" placeholder="Opção 2">
+                                </div>
+                                <div class="option-input">
+                                    <input type="radio" name="correctOption" value="2" id="correct2">
+                                    <input type="text" id="option2" placeholder="Opção 3">
+                                </div>
+                                <div class="option-input">
+                                    <input type="radio" name="correctOption" value="3" id="correct3">
+                                    <input type="text" id="option3" placeholder="Opção 4">
+                                </div>
+                            </div>
+                            <small style="color: #666;">Selecione o botão de rádio da resposta correta</small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="category">Categoria:</label>
-                        <input type="text" id="category" placeholder="Ex: Geografia, História, Ciências...">
-                    </div>
+                        <div class="form-group">
+                            <label for="questionGroup">Grupo:</label>
+                            <select id="questionGroup">
+                                <option value="">Selecione um grupo...</option>
+                            </select>
+                            <small style="color: #666;">Selecione em qual grupo esta pergunta pertence</small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="timeSeconds">Tempo (segundos):</label>
-                        <input type="number" id="timeSeconds" value="150" min="5" max="300">
-                    </div>
+                        <div class="form-group">
+                            <label for="category">Categoria:</label>
+                            <input type="text" id="category" placeholder="Ex: Geografia, História, Ciências...">
+                        </div>
 
-                    <!-- Alert Messages locais (para validação) -->
-                    <div id="questionFormAlertContainer"></div>
+                        <div class="form-group">
+                            <label for="timeSeconds">Tempo (segundos):</label>
+                            <input type="number" id="timeSeconds" value="150" min="5" max="300">
+                        </div>
 
-                    <div id="formActions">
-                        <button class="btn btn-primary" onclick="addQuestion()">
-                            ➕ Adicionar Pergunta
-                        </button>
+                        <!-- Alert Messages locais (para validação) -->
+                        <div id="questionFormAlertContainer"></div>
+
+                        <div id="formActions">
+                            <button class="btn btn-primary" onclick="addQuestion()">
+                                ➕ Adicionar Pergunta
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
                 <!-- Questions List -->
                 <div class="section">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h2 class="section-title" style="margin: 0;">📝 Perguntas Existentes</h2>
                         <div class="form-group" style="margin: 0; width: 300px;">
                             <label for="filterGroup" style="margin-bottom: 5px;">Filtrar por Grupo:</label>
@@ -836,7 +807,8 @@
                     </div>
 
                     <div style="overflow-x: auto;">
-                        <table id="rankingTable" style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden;">
+                        <table id="rankingTable"
+                            style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden;">
                             <thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                                 <tr>
                                     <th style="padding: 15px; text-align: left;">🏅 Colocação</th>
@@ -858,30 +830,119 @@
                         </table>
                     </div>
 
-                    <div id="rankingStats" style="margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    <div id="rankingStats"
+                        style="margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
                         <!-- Stats cards will be added here -->
                     </div>
                 </div>
             </div>
 
             <!-- Config Tab -->
+            <div id="registrationsTab" class="tab-content">
+                <div class="section">
+                    <h2 class="section-title">👥 Gerenciamento de Cadastros & Ranking</h2>
+
+                    <!-- Ranking Management Section -->
+                    <div style="margin-bottom: 40px;">
+                        <h3 style="color: #667eea; margin-bottom: 15px;">🏆 Ranking de Jogadores</h3>
+                        <div
+                            style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #667eea; color: white;">
+                                    <tr>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Colocação</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Nome
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Email</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Telefone</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Cargo</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Pontuação</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Tempo</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Completou Quiz</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingManagementTableBody">
+                                    <tr>
+                                        <td colspan="9" style="padding: 20px; text-align: center; color: #999;">
+                                            Carregando ranking...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Registrations Management Section -->
+                    <div>
+                        <h3 style="color: #667eea; margin-bottom: 15px;">📋 Cadastros de Usuários</h3>
+                        <div
+                            style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead style="background: #667eea; color: white;">
+                                    <tr>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">ID
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Nome
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Email</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">DDD
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Telefone</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">
+                                            Cargo</th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Tipo
+                                        </th>
+                                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">Data
+                                            Cadastro</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Quiz Completo</th>
+                                        <th style="padding: 12px; text-align: center; border-bottom: 2px solid #ddd;">
+                                            Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registrationsTableBody">
+                                    <tr>
+                                        <td colspan="10" style="padding: 20px; text-align: center; color: #999;">
+                                            Carregando cadastros...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div id="configTab" class="tab-content">
                 <div class="section">
                     <h2 class="section-title">⚙️ Configurações de API</h2>
 
-                    <div style="margin-bottom: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
-                        <strong>✅ Usando JSONBin.io Pro</strong>
+                    <div
+                        style="margin-bottom: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                        <strong>✅ Usando Servidor Customizado</strong>
                         <p style="margin: 10px 0 0 0; line-height: 1.6;">
-                            O sistema está configurado para usar o <strong>JSONBin.io com plano Pro</strong>, que oferece:
+                            O sistema está configurado para usar o <strong>Servidor Customizado</strong> como padrão,
+                            que oferece:
                         </p>
                         <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
-                            <li>✅ Sem limites de tamanho de payload (suporta imagens base64)</li>
-                            <li>✅ Funciona perfeitamente no gerenciador web e Unity</li>
-                            <li>✅ Alta disponibilidade e backup automático</li>
-                            <li>✅ API rápida e confiável</li>
+                            <li>✅ Sem limites de tamanho de payload</li>
+                            <li>✅ Controle total dos dados no seu servidor</li>
+                            <li>✅ Endpoints PHP para flexibilidade</li>
+                            <li>✅ Compatível com Unity e Web</li>
                         </ul>
                         <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">
-                            <strong>Nota:</strong> A opção de servidor customizado está disponível como backup, mas não é necessária.
+                            <strong>Nota:</strong> O JSONBin.io está disponível como backup alternativo.
                         </p>
                     </div>
 
@@ -894,88 +955,86 @@
                             <label><strong>Tipo de API:</strong></label>
                             <div style="display: flex; gap: 20px; margin-top: 10px;">
                                 <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="apiType" value="jsonbin" checked onchange="toggleAPIConfig()">
-                                    <span style="margin-left: 8px;">📦 JSONBin.io Pro (Recomendado)</span>
+                                    <input type="radio" name="apiType" value="customServer" checked
+                                        onchange="toggleAPIConfig()">
+                                    <span style="margin-left: 8px;">🌐 Servidor Customizado (Padrão)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer;">
-                                    <input type="radio" name="apiType" value="customServer" onchange="toggleAPIConfig()">
-                                    <span style="margin-left: 8px;">🌐 Servidor Customizado (Backup)</span>
+                                    <input type="radio" name="apiType" value="jsonbin" onchange="toggleAPIConfig()">
+                                    <span style="margin-left: 8px;">📦 JSONBin.io Pro (Backup)</span>
                                 </label>
                             </div>
                         </div>
 
                         <!-- JSONBin Config -->
-                        <div id="jsonbinConfig" style="margin-top: 30px;">
-                            <h3 style="color: #667eea; margin-bottom: 15px;">📦 Configurações JSONBin.io Pro</h3>
+                        <div id="jsonbinConfig" style="margin-top: 30px; display: none;">
+                            <h3 style="color: #667eea; margin-bottom: 15px;">📦 Configurações JSONBin.io Pro (Backup)
+                            </h3>
 
-                            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                                <strong>✨ Plano Pro Ativo</strong>
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                                <strong>💡 Opção de Backup</strong>
                                 <p style="margin: 8px 0 0 0; font-size: 14px; color: #666;">
-                                    Sem limites de tamanho, suporta imagens base64, alta disponibilidade.
+                                    Use como alternativa caso o servidor customizado não esteja disponível.
                                 </p>
                             </div>
 
                             <div class="form-group">
                                 <label>API Key:</label>
-                                <input type="text" id="jsonbinApiKey" value="$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y" readonly style="background: #f5f5f5;">
+                                <input type="text" id="jsonbinApiKey"
+                                    value="$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y" readonly
+                                    style="background: #f5f5f5;">
                             </div>
 
                             <div class="form-group">
                                 <label>Quiz Bin ID:</label>
-                                <input type="text" id="jsonbinQuizBinId" value="68e7598543b1c97be95fbb4d" readonly style="background: #f5f5f5;">
+                                <input type="text" id="jsonbinQuizBinId" value="68e7598543b1c97be95fbb4d" readonly
+                                    style="background: #f5f5f5;">
                             </div>
 
                             <div class="form-group">
                                 <label>Ranking Bin ID:</label>
-                                <input type="text" id="jsonbinRankingBinId" value="68e75972ae596e708f0b701f" readonly style="background: #f5f5f5;">
+                                <input type="text" id="jsonbinRankingBinId" value="68e75972ae596e708f0b701f" readonly
+                                    style="background: #f5f5f5;">
                             </div>
 
                             <div class="form-group">
                                 <label>Registration Bin ID:</label>
-                                <input type="text" id="jsonbinRegistrationBinId" value="68ed827aae596e708f1217dc" readonly style="background: #f5f5f5;">
-                            </div>
-
-                            <!-- Group Storage Usage -->
-                            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                                <h3 style="color: #667eea; margin-bottom: 20px;">💾 Uso de Espaço por Grupo</h3>
-                                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-                                    Cada grupo tem um bin separado com limite de 1 MB para armazenar imagens.
-                                </p>
-
-                                <div id="groupStorageStats">
-                                    <!-- Progress bars will be dynamically generated here -->
-                                    <div style="color: #999; text-align: center; padding: 20px;">
-                                        Carregue um quiz para ver o uso de espaço
-                                    </div>
-                                </div>
+                                <input type="text" id="jsonbinRegistrationBinId" value="68ed827aae596e708f1217dc"
+                                    readonly style="background: #f5f5f5;">
                             </div>
                         </div>
 
                         <!-- Custom Server Config -->
-                        <div id="customServerConfig" style="margin-top: 30px; display: none;">
-                            <h3 style="color: #667eea; margin-bottom: 15px;">🌐 Configurações Servidor Customizado</h3>
+                        <div id="customServerConfig" style="margin-top: 30px;">
+                            <h3 style="color: #667eea; margin-bottom: 15px;">🌐 Configurações Servidor Customizado
+                                (Padrão)</h3>
 
                             <div class="form-group">
                                 <label>Base URL:</label>
-                                <input type="text" id="customBaseUrl" value="https://jogos.clickideia.com.br" placeholder="https://seu-servidor.com">
+                                <input type="text" id="customBaseUrl" value="https://jogos.clickideia.com.br"
+                                    placeholder="https://seu-servidor.com">
                             </div>
 
                             <div class="form-group">
                                 <label>Quiz Endpoint:</label>
-                                <input type="text" id="customQuizEndpoint" value="/QuizData.php" placeholder="/QuizData.php">
+                                <input type="text" id="customQuizEndpoint" value="/QuizData.php"
+                                    placeholder="/QuizData.php">
                             </div>
 
                             <div class="form-group">
                                 <label>Ranking Endpoint:</label>
-                                <input type="text" id="customRankingEndpoint" value="/Ranking.php" placeholder="/Ranking.php">
+                                <input type="text" id="customRankingEndpoint" value="/RankingData.php"
+                                    placeholder="/RankingData.php">
                             </div>
 
                             <div class="form-group">
                                 <label>Registration Endpoint:</label>
-                                <input type="text" id="customRegistrationEndpoint" value="/Register.php" placeholder="/Register.php">
+                                <input type="text" id="customRegistrationEndpoint" value="/Register.php"
+                                    placeholder="/Register.php">
                             </div>
 
-                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
+                            <div
+                                style="background: #fff3cd; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #ffc107;">
                                 <strong>⚠️ Requisitos do Servidor Customizado:</strong>
                                 <ul style="margin: 10px 0 0 20px; line-height: 1.8;">
                                     <li><strong>Métodos HTTP:</strong> GET e POST</li>
@@ -989,8 +1048,10 @@
                                     </li>
                                     <li><strong>Para Unity:</strong> CORS não é necessário (apenas para web)</li>
                                 </ul>
-                                <p style="margin: 10px 0 0 0; padding: 10px; background: #fff; border-radius: 4px; font-size: 13px;">
-                                    <strong>💡 Dica:</strong> Se você vir erro "blocked by CORS policy" no console, significa que o servidor não está configurado corretamente.
+                                <p
+                                    style="margin: 10px 0 0 0; padding: 10px; background: #fff; border-radius: 4px; font-size: 13px;">
+                                    <strong>💡 Dica:</strong> Se você vir erro "blocked by CORS policy" no console,
+                                    significa que o servidor não está configurado corretamente.
                                     A aplicação Unity não terá esse problema, apenas o gerenciador web.
                                 </p>
                             </div>
@@ -1004,22 +1065,29 @@
                                 </div>
                             </div>
 
-                            <button class="btn btn-primary" style="font-size: 18px; padding: 15px; width: 100%; margin-bottom: 15px;" onclick="applyConfigAndReload()">
+                            <button class="btn btn-primary"
+                                style="font-size: 18px; padding: 15px; width: 100%; margin-bottom: 15px;"
+                                onclick="applyConfigAndReload()">
                                 🔄 Aplicar Configuração Agora
                             </button>
 
-                            <button class="btn btn-warning" style="font-size: 16px; padding: 12px; width: 100%; margin-bottom: 20px;" onclick="quickSwitchToJSONBin()">
+                            <button class="btn btn-warning"
+                                style="font-size: 16px; padding: 12px; width: 100%; margin-bottom: 20px;"
+                                onclick="quickSwitchToJSONBin()">
                                 ⚡ Voltar Rápido para JSONBin.io
                             </button>
 
-                            <div style="padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
+                            <div
+                                style="padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">
                                 <strong>🚀 Como Funciona:</strong>
                                 <ol style="margin: 10px 0 0 20px; line-height: 1.8;">
                                     <li>Escolha o tipo de API (JSONBin ou Servidor Customizado)</li>
                                     <li>Configure as URLs se necessário</li>
                                     <li>Clique em "🔄 Aplicar Configuração Agora"</li>
                                     <li><strong>Web:</strong> Passa a usar as novas URLs imediatamente (GET/POST)</li>
-                                    <li><strong>Unity:</strong> O navegador vai pedir para salvar o arquivo <code>api-config.json</code></li>
+                                    <li><strong>Unity:</strong> O navegador vai pedir para salvar o arquivo
+                                        <code>api-config.json</code>
+                                    </li>
                                     <li>Salve o arquivo em: <code>Build/StreamingAssets/api-config.json</code></li>
                                     <li>Pronto! Unity lerá na próxima vez que abrir</li>
                                 </ol>
@@ -1034,24 +1102,18 @@
     <script>
         // Dynamic API Configuration - Can be changed via config tab
         let API_CONFIG = {
-            apiType: 'jsonbin', // 'jsonbin' or 'customServer'
+            apiType: 'customServer', // 'jsonbin' or 'customServer' - Custom Server is now default
             jsonbin: {
                 apiKey: '$2a$10$Uu3NdRpmfPSc0b2MNV0PY.mKluWPCevjK7ioHlXr4AlMca/HC2V9y',
                 baseUrl: 'https://api.jsonbin.io/v3/b',
                 quizBinId: '68e7598543b1c97be95fbb4d',
                 rankingBinId: '68e75972ae596e708f0b701f',
-                registrationBinId: '68ed827aae596e708f1217dc',
-                group1ImagesBinId: '6906ba3e43b1c97be99255f0',
-                group2ImagesBinId: '6906ba51d0ea881f40cd502c',
-                group3ImagesBinId: '6906ba5dd0ea881f40cd504c',
-                group4ImagesBinId: '6906ba63ae596e708f3e0ec2',
-                group5ImagesBinId: '6906ba6bd0ea881f40cd5071',
-                group6ImagesBinId: '6906ec45d0ea881f40cdde91'
+                registrationBinId: '68ed827aae596e708f1217dc'
             },
             customServer: {
                 baseUrl: 'https://jogos.clickideia.com.br',
                 quizEndpoint: '/QuizData.php',
-                rankingEndpoint: '/Ranking.php',
+                rankingEndpoint: '/RankingData.php',
                 registrationEndpoint: '/Register.php'
             }
         };
@@ -1119,6 +1181,44 @@
         let currentTab = 'groups';
         let currentFilterGroupId = '';
 
+        // Function to disable/enable question form during image processing
+        function disableQuestionForm(disabled) {
+            const formElements = [
+                'questionText',
+                'option0',
+                'option1',
+                'option2',
+                'option3',
+                'questionGroup',
+                'category',
+                'timeSeconds'
+            ];
+
+            formElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.disabled = disabled;
+            });
+
+            // Disable radio buttons
+            document.querySelectorAll('input[name="correctOption"]').forEach(radio => {
+                radio.disabled = disabled;
+            });
+
+            // Disable form buttons
+            const formActions = document.getElementById('formActions');
+            if (formActions) {
+                const buttons = formActions.querySelectorAll('button');
+                buttons.forEach(btn => btn.disabled = disabled);
+            }
+
+            // Show/hide visual feedback
+            if (disabled) {
+                document.body.style.cursor = 'wait';
+            } else {
+                document.body.style.cursor = 'default';
+            }
+        }
+
         // Image handling functions
         function setupImageUpload() {
             const imageInput = document.getElementById('questionImage');
@@ -1161,9 +1261,15 @@
                 return;
             }
 
-            // Show loading message
+            // Mostrar overlay de carregamento
+            showLoadingOverlay('Processando imagem...', 'Aguarde, comprimindo e convertendo para Base64');
+
+            // Show loading message and disable form
             const container = document.getElementById('imagePreviewContainer');
             container.innerHTML = '<p style="color: #666;">⏳ Processando e comprimindo imagem...</p>';
+
+            // Disable form while processing
+            disableQuestionForm(true);
 
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -1172,54 +1278,25 @@
                     // Compress image to reduce size
                     compressImage(img, file.name, file.type)
                         .then(compressed => {
-                            // Verificar se adicionar essa imagem vai estourar o limite
-                            const currentPayloadSize = JSON.stringify(quizData).length;
-                            const newImageSize = compressed.base64.length;
-                            const estimatedTotalSize = currentPayloadSize + newImageSize;
-                            const estimatedTotalMB = (estimatedTotalSize / 1024 / 1024).toFixed(2);
-                            const maxSafeSizeMB = 8;
-
-                            console.log(`📊 Tamanho atual do payload: ${(currentPayloadSize / 1024 / 1024).toFixed(2)} MB`);
-                            console.log(`📦 Tamanho da nova imagem: ${compressed.sizeKB} KB`);
-                            console.log(`📈 Tamanho estimado total: ${estimatedTotalMB} MB`);
-
-                            // Se estourar o limite, bloquear o upload
-                            if (estimatedTotalSize > (maxSafeSizeMB * 1024 * 1024)) {
-                                console.error(`❌ BLOQUEADO: Adicionar esta imagem ultrapassaria o limite de ${maxSafeSizeMB} MB`);
-                                showAlert(
-                                    `❌ IMAGEM BLOQUEADA\n\n` +
-                                    `Esta imagem não pode ser adicionada pois ultrapassaria o limite de dados.\n\n` +
-                                    `Tamanho atual: ${(currentPayloadSize / 1024 / 1024).toFixed(2)} MB\n` +
-                                    `Tamanho da imagem: ${compressed.sizeKB} KB\n` +
-                                    `Total estimado: ${estimatedTotalMB} MB\n` +
-                                    `Limite: ${maxSafeSizeMB} MB\n\n` +
-                                    `Sugestões:\n` +
-                                    `• Remova algumas imagens existentes\n` +
-                                    `• Use uma imagem de menor resolução\n` +
-                                    `• Salve o quiz antes de adicionar mais imagens`,
-                                    'error'
-                                );
-
-                                // Resetar o preview para o estado inicial
-                                removeImage();
-                                return;
-                            }
+                            console.log(`📦 Tamanho da imagem comprimida: ${compressed.sizeKB} KB`);
 
                             // Tudo OK, adicionar a imagem
-                            // Gerar imageId único para o novo sistema de bins separados
-                            currentImageData = {
-                                ...compressed,
-                                imageId: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-                            };
+                            currentImageData = compressed;
                             imageRemoved = false;
                             showImagePreview(currentImageData.dataUrl);
 
-                            console.log(`✅ Imagem adicionada com sucesso: ${compressed.sizeKB} KB (ID: ${currentImageData.imageId})`);
+                            console.log(`✅ Imagem adicionada com sucesso: ${compressed.sizeKB} KB`);
 
                             // Avisar se a imagem ficou grande
-                            if (compressed.sizeKB > 400) {
-                                showAlert(`⚠️ Imagem comprimida: ${compressed.sizeKB} KB\n\nA imagem foi comprimida ao máximo possível, mas ainda ficou relativamente grande.`, 'warning');
+                            if (compressed.sizeKB > 500) {
+                                showAlert(`⚠️ Imagem comprimida: ${compressed.sizeKB} KB\n\nA imagem foi comprimida mas ainda ficou relativamente grande. Considere usar uma imagem menor para melhor desempenho.`, 'warning');
                             }
+
+                            // Re-enable form after successful processing
+                            disableQuestionForm(false);
+
+                            // Esconder overlay após sucesso
+                            hideLoadingOverlay();
                         })
                         .catch(error => {
                             // Falha na compressão - imagem muito grande
@@ -1228,6 +1305,12 @@
 
                             // Resetar o preview para o estado inicial
                             removeImage();
+
+                            // Re-enable form after error
+                            disableQuestionForm(false);
+
+                            // Esconder overlay em caso de erro
+                            hideLoadingOverlay();
                         });
                 };
                 img.src = e.target.result;
@@ -1329,7 +1412,6 @@
             container.innerHTML = `
                 <img src="${imageSrc}" alt="Preview" class="image-preview">
                 <br>
-                <input type="file" id="questionImage" accept="image/*" style="display: none;">
                 <button type="button" class="image-upload-btn" onclick="document.getElementById('questionImage').click()">
                     🔄 Trocar Imagem
                 </button>
@@ -1340,8 +1422,6 @@
                     ${currentImageData.originalName}
                 </p>
             `;
-            // Reattach event listener to the new input
-            document.getElementById('questionImage').addEventListener('change', handleImageUpload);
         }
 
         function removeImage() {
@@ -1445,10 +1525,12 @@
             } else if (tabName === 'ranking') {
                 document.getElementById('rankingTab').classList.add('active');
                 loadRanking(); // Carregar ranking ao abrir a aba
+            } else if (tabName === 'registrations') {
+                document.getElementById('registrationsTab').classList.add('active');
+                loadRegistrationsManagement(); // Carregar dados de cadastros e ranking
             } else if (tabName === 'config') {
                 document.getElementById('configTab').classList.add('active');
                 updateCurrentConfigDisplay();
-                updateGroupStorageStats(); // Atualizar barras de progresso
             }
         }
 
@@ -1536,6 +1618,9 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
             console.log('✅ Configuração atualizada:', API_CONFIG);
 
+            // Salvar arquivo no StreamingAssets
+            await saveConfigToFile();
+
             showAlert('✅ Configuração aplicada! Recarregando dados...', 'success');
 
             // Recarregar todos os dados com a nova configuração
@@ -1604,7 +1689,7 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
 
         // Update config display when custom server fields change
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const customFields = ['customBaseUrl', 'customQuizEndpoint', 'customRankingEndpoint', 'customRegistrationEndpoint'];
             customFields.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
@@ -1844,18 +1929,6 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     });
                 }
 
-                // Migrar automaticamente imagens antigas para o novo sistema (JSONBin apenas)
-                if (API_CONFIG.apiType === 'jsonbin') {
-                    const migratedCount = migrateOldImagesToNewSystem();
-                    if (migratedCount > 0) {
-                        console.log(`🔄 ${migratedCount} imagens migradas para o novo sistema (bins separados)`);
-                        showAlert(`🔄 ${migratedCount} imagem(ns) antiga(s) detectada(s)!\n\nForam migradas automaticamente para o novo sistema de bins separados.\n\n⚠️ IMPORTANTE: Clique em "Salvar Perguntas" para aplicar a migração!`, 'warning');
-                    }
-
-                    // Carregar imagens dos bins separados
-                    await loadAllGroupImages();
-                }
-
                 const totalQuestions = quizData.groups.reduce((sum, g) => sum + (g.questions?.length || 0), 0);
                 setStatus('success', `✅ ${quizData.groups.length} grupos e ${totalQuestions} perguntas carregadas`);
 
@@ -1879,397 +1952,10 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             }
         }
 
-        /**
-         * Migra automaticamente imagens antigas (base64 inline) para o novo sistema (bins separados)
-         * Gera imageId para imagens que ainda não têm
-         */
-        function migrateOldImagesToNewSystem() {
-            if (!quizData || !quizData.groups) return 0;
-
-            let migratedCount = 0;
-
-            quizData.groups.forEach(group => {
-                if (!group.questions) return;
-
-                group.questions.forEach(question => {
-                    // Se tem base64 mas não tem imageId, precisa migrar
-                    if (question.imageBase64 && !question.imageId) {
-                        // Gerar imageId único
-                        question.imageId = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-
-                        // Garantir que todos os campos de imagem existem
-                        if (!question.imageMimeType) {
-                            question.imageMimeType = 'image/png';
-                        }
-                        if (!question.imageFilename) {
-                            question.imageFilename = `question_${question.id || Date.now()}.png`;
-                        }
-                        if (!question.imageOriginalName) {
-                            question.imageOriginalName = question.imageFilename;
-                        }
-
-                        migratedCount++;
-                        const questionText = question.text || question.question || 'Questão';
-                        console.log(`✅ Imagem migrada: ${questionText.substring(0, 30)}... → ${question.imageId}`);
-                    }
-                });
-            });
-
-            return migratedCount;
-        }
-
-        /**
-         * Carrega as imagens de todos os grupos dos bins separados e reconstrói o base64 nas questões
-         * Isso permite que o manager exiba as imagens normalmente
-         * Carrega tanto bins principais quanto bins extras
-         */
-        async function loadAllGroupImages() {
-            if (!quizData || !quizData.groups) return;
-
-            console.log('🖼️ Carregando imagens dos bins separados...');
-
-            for (let groupIndex = 0; groupIndex < quizData.groups.length; groupIndex++) {
-                const group = quizData.groups[groupIndex];
-
-                // Verificar se alguma questão tem imageId (novo sistema)
-                const hasNewSystemImages = group.questions && group.questions.some(q => q.imageId && !q.imageBase64);
-
-                if (!hasNewSystemImages) {
-                    continue; // Grupo já tem imagens inline ou não tem imagens
-                }
-
-                const binIdKey = `group${groupIndex + 1}ImagesBinId`;
-                const binId = API_CONFIG.jsonbin[binIdKey];
-
-                if (!binId) {
-                    console.warn(`⚠️ Bin ID não configurado para grupo ${groupIndex + 1}`);
-                    continue;
-                }
-
-                const imagesMap = {};
-
-                try {
-                    // Carregar bin principal
-                    const url = `${API_CONFIG.jsonbin.baseUrl}/${binId}/latest`;
-                    const response = await fetch(url, {
-                        method: 'GET',
-                        headers: {
-                            'X-Master-Key': API_CONFIG.jsonbin.apiKey,
-                            'Accept': 'application/json',
-                            'X-Bin-Meta': 'false'
-                        }
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-
-                        // Adicionar imagens do bin principal ao mapa
-                        if (data.images) {
-                            data.images.forEach(img => {
-                                imagesMap[img.imageId] = img;
-                            });
-                        }
-
-                        console.log(`✅ Bin principal do grupo ${groupIndex + 1}: ${data.images?.length || 0} imagens`);
-                    } else if (response.status === 404) {
-                        console.log(`📭 Bin principal vazio para grupo ${groupIndex + 1} (404)`);
-                    } else {
-                        console.error(`❌ Erro ao carregar bin principal do grupo ${groupIndex + 1}: ${response.status}`);
-                    }
-
-                    // Carregar bins extras se existirem
-                    if (quizData.extraImageBins && quizData.extraImageBins[groupIndex]) {
-                        const extraBinIds = quizData.extraImageBins[groupIndex];
-                        console.log(`🔄 Carregando ${extraBinIds.length} bin(s) extra(s) do grupo ${groupIndex + 1}...`);
-
-                        for (let i = 0; i < extraBinIds.length; i++) {
-                            const extraBinId = extraBinIds[i];
-                            if (!extraBinId) continue;
-
-                            try {
-                                const extraUrl = `${API_CONFIG.jsonbin.baseUrl}/${extraBinId}/latest`;
-                                const extraResponse = await fetch(extraUrl, {
-                                    method: 'GET',
-                                    headers: {
-                                        'X-Master-Key': API_CONFIG.jsonbin.apiKey,
-                                        'Accept': 'application/json',
-                                        'X-Bin-Meta': 'false'
-                                    }
-                                });
-
-                                if (extraResponse.ok) {
-                                    const extraData = await extraResponse.json();
-                                    if (extraData.images) {
-                                        extraData.images.forEach(img => {
-                                            imagesMap[img.imageId] = img;
-                                        });
-                                    }
-                                    console.log(`✅ Bin extra ${i + 1} do grupo ${groupIndex + 1}: ${extraData.images?.length || 0} imagens`);
-                                }
-                            } catch (extraError) {
-                                console.error(`❌ Erro ao carregar bin extra ${i + 1} do grupo ${groupIndex + 1}:`, extraError);
-                            }
-                        }
-                    }
-
-                    // Hidratar questões com base64 de todos os bins (principal + extras)
-                    if (group.questions) {
-                        group.questions.forEach(question => {
-                            if (question.imageId && imagesMap[question.imageId]) {
-                                const imgData = imagesMap[question.imageId];
-                                question.imageBase64 = imgData.base64;
-                                question.imageMimeType = imgData.mimeType;
-                                question.imageFilename = imgData.filename;
-                                question.imageOriginalName = imgData.originalName;
-                            }
-                        });
-                    }
-
-                    const totalImages = Object.keys(imagesMap).length;
-                    console.log(`✅ Total de imagens do grupo ${groupIndex + 1}: ${totalImages}`);
-
-                } catch (error) {
-                    console.error(`❌ Erro ao carregar imagens do grupo ${groupIndex + 1}:`, error);
-                }
-            }
-
-            console.log('✅ Carregamento de imagens concluído');
-        }
-
-        /**
-         * Salva as imagens de cada grupo em bins separados (1 MB cada)
-         * Cada grupo tem seu próprio bin de imagens no JSONBin
-         */
-        /**
-         * Cria um novo bin no JSONBin.io
-         * @param {string} binName - Nome do bin
-         * @param {object} initialData - Dados iniciais do bin
-         * @returns {Promise<string>} - ID do bin criado
-         */
-        async function createNewBin(binName, initialData) {
-            const url = `${API_CONFIG.jsonbin.baseUrl}`;
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': API_CONFIG.jsonbin.apiKey,
-                    'X-Bin-Name': binName,
-                    'X-Bin-Private': 'true'
-                },
-                body: JSON.stringify(initialData)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Falha ao criar bin: ${response.status} ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            console.log(`✅ Bin criado: ${binName} (ID: ${result.metadata.id})`);
-            return result.metadata.id;
-        }
-
-        /**
-         * Divide imagens em chunks de no máximo 900 KB (margem de segurança do limite de 1 MB)
-         */
-        function splitImagesIntoChunks(images, maxSizeBytes = 900 * 1024) {
-            const chunks = [];
-            let currentChunk = [];
-            let currentSize = 0;
-
-            for (const image of images) {
-                const imageSize = JSON.stringify(image).length;
-
-                // Se a imagem sozinha já excede o limite, adiciona em chunk separado
-                if (imageSize > maxSizeBytes) {
-                    console.warn(`⚠️ Imagem ${image.imageId} muito grande (${(imageSize/1024).toFixed(0)} KB)`);
-                    if (currentChunk.length > 0) {
-                        chunks.push(currentChunk);
-                        currentChunk = [];
-                        currentSize = 0;
-                    }
-                    chunks.push([image]);
-                    continue;
-                }
-
-                // Se adicionar esta imagem ultrapassar o limite, inicia novo chunk
-                if (currentSize + imageSize > maxSizeBytes && currentChunk.length > 0) {
-                    chunks.push(currentChunk);
-                    currentChunk = [];
-                    currentSize = 0;
-                }
-
-                currentChunk.push(image);
-                currentSize += imageSize;
-            }
-
-            if (currentChunk.length > 0) {
-                chunks.push(currentChunk);
-            }
-
-            return chunks;
-        }
-
-        async function saveGroupImages() {
-            if (API_CONFIG.apiType !== 'jsonbin') {
-                console.log('⏭️ Sistema de imagens separadas só funciona com JSONBin');
-                return true;
-            }
-
-            console.log('🖼️ Salvando imagens em bins separados por grupo...');
-
-            try {
-                // Inicializar estrutura de bins extras se não existir
-                if (!quizData.extraImageBins) {
-                    quizData.extraImageBins = {};
-                }
-
-                // Preparar dados de imagens por grupo
-                for (let groupIndex = 0; groupIndex < quizData.groups.length; groupIndex++) {
-                    const group = quizData.groups[groupIndex];
-                    const imagesForGroup = [];
-
-                    // Coletar todas as imagens do grupo
-                    if (group.questions) {
-                        group.questions.forEach(question => {
-                            if (question.imageId && question.imageBase64) {
-                                imagesForGroup.push({
-                                    imageId: question.imageId,
-                                    base64: question.imageBase64,
-                                    mimeType: question.imageMimeType,
-                                    filename: question.imageFilename,
-                                    originalName: question.imageOriginalName
-                                });
-                            }
-                        });
-                    }
-
-                    if (imagesForGroup.length === 0) {
-                        console.log(`⏭️ Grupo ${groupIndex + 1}: sem imagens para salvar`);
-                        continue;
-                    }
-
-                    // Dividir em chunks de 900 KB
-                    const chunks = splitImagesIntoChunks(imagesForGroup);
-                    console.log(`📦 Grupo ${groupIndex + 1}: ${imagesForGroup.length} imagens divididas em ${chunks.length} bin(s)`);
-
-                    // Salvar primeiro chunk no bin principal
-                    const binIdKey = `group${groupIndex + 1}ImagesBinId`;
-                    const binId = API_CONFIG.jsonbin[binIdKey];
-
-                    if (!binId) {
-                        console.warn(`⚠️ Bin ID não configurado para grupo ${groupIndex + 1}`);
-                        continue;
-                    }
-
-                    // Salvar bin principal (primeiro chunk)
-                    const mainPayload = { images: chunks[0] };
-                    const mainSize = JSON.stringify(mainPayload).length;
-                    console.log(`📤 Salvando ${chunks[0].length} imagens no bin principal do grupo ${groupIndex + 1} (${(mainSize/1024).toFixed(0)} KB)`);
-
-                    const mainResponse = await fetch(`${API_CONFIG.jsonbin.baseUrl}/${binId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-Master-Key': API_CONFIG.jsonbin.apiKey,
-                            'X-Bin-Meta': 'false'
-                        },
-                        body: JSON.stringify(mainPayload)
-                    });
-
-                    if (!mainResponse.ok) {
-                        const errorMsg = `Erro ao salvar bin principal do grupo ${groupIndex + 1}: ${mainResponse.status}`;
-                        console.error(errorMsg);
-                        showAlert(errorMsg, 'error');
-                        return false;
-                    }
-
-                    console.log(`✅ Bin principal do grupo ${groupIndex + 1} salvo`);
-
-                    // Salvar chunks extras em bins separados
-                    if (chunks.length > 1) {
-                        console.log(`🔄 Criando ${chunks.length - 1} bin(s) extra(s) para grupo ${groupIndex + 1}...`);
-                        showAlert(`⚠️ Grupo ${groupIndex + 1} excedeu 900 KB. Criando ${chunks.length - 1} bin(s) extra(s)...`, 'warning');
-
-                        // Inicializar array de bins extras para este grupo
-                        if (!quizData.extraImageBins[groupIndex]) {
-                            quizData.extraImageBins[groupIndex] = [];
-                        }
-
-                        // Processar chunks extras (índice 1 em diante)
-                        for (let chunkIndex = 1; chunkIndex < chunks.length; chunkIndex++) {
-                            const chunk = chunks[chunkIndex];
-                            const binName = `ExtraGroupImages${groupIndex}_${chunkIndex}`;
-
-                            // Verificar se já existe um bin extra para este chunk
-                            let extraBinId = quizData.extraImageBins[groupIndex][chunkIndex - 1];
-
-                            if (!extraBinId) {
-                                // Criar novo bin
-                                console.log(`🆕 Criando novo bin: ${binName}`);
-                                showLoadingOverlay(`Criando bin extra: ${binName}...`);
-                                extraBinId = await createNewBin(binName, { images: chunk });
-                                quizData.extraImageBins[groupIndex][chunkIndex - 1] = extraBinId;
-                                console.log(`✅ Bin ${binName} criado com ID: ${extraBinId}`);
-                            } else {
-                                // Atualizar bin existente
-                                console.log(`📤 Atualizando bin extra: ${binName} (${extraBinId})`);
-                                const extraPayload = { images: chunk };
-                                const extraResponse = await fetch(`${API_CONFIG.jsonbin.baseUrl}/${extraBinId}`, {
-                                    method: 'PUT',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-Master-Key': API_CONFIG.jsonbin.apiKey,
-                                        'X-Bin-Meta': 'false'
-                                    },
-                                    body: JSON.stringify(extraPayload)
-                                });
-
-                                if (!extraResponse.ok) {
-                                    console.error(`❌ Erro ao atualizar bin extra ${binName}`);
-                                    return false;
-                                }
-                            }
-
-                            const chunkSize = JSON.stringify({ images: chunk }).length;
-                            console.log(`✅ Bin extra ${binName} salvo: ${chunk.length} imagens (${(chunkSize/1024).toFixed(0)} KB)`);
-                        }
-                    }
-                }
-
-                console.log('✅ Todas as imagens salvas nos bins separados');
-                return true;
-
-            } catch (error) {
-                console.error('❌ Erro ao salvar imagens separadas:', error);
-                showAlert('Erro ao salvar imagens: ' + error.message, 'error');
-                return false;
-            }
-        }
-
-        /**
-         * Mostra o overlay de loading e desabilita interações
-         */
-        function showLoadingOverlay(message = 'Salvando...') {
-            const overlay = document.getElementById('loadingOverlay');
-            const messageEl = document.getElementById('loadingMessage');
-            messageEl.textContent = message;
-            overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        /**
-         * Esconde o overlay de loading e reabilita interações
-         */
-        function hideLoadingOverlay() {
-            const overlay = document.getElementById('loadingOverlay');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
         async function saveQuestions() {
+            // Mostrar overlay de carregamento
+            showLoadingOverlay('Salvando questões...', 'Aguarde, processando dados');
             setStatus('loading', 'Salvando alterações...');
-            showLoadingOverlay('Salvando alterações...');
 
             try {
                 // Capturar estado ANTES de salvar
@@ -2285,82 +1971,24 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 // Process images before saving
                 processImagesForSaving();
 
-                // NOVO SISTEMA: Salvar imagens em bins separados (JSONBin apenas)
-                if (API_CONFIG.apiType === 'jsonbin') {
-                    setStatus('loading', 'Salvando imagens em bins separados...');
-                    showLoadingOverlay('Salvando imagens em bins separados...');
-                    const imagesSaved = await saveGroupImages();
-
-                    if (!imagesSaved) {
-                        setStatus('error', '❌ Erro ao salvar imagens');
-                        hideLoadingOverlay();
-                        return;
-                    }
-
-                    showLoadingOverlay('Salvando dados do quiz...');
-                }
-
-                // Criar cópia limpa dos dados SEM base64 (apenas imageId)
-                const cleanQuizData = JSON.parse(JSON.stringify(quizData));
-
-                if (API_CONFIG.apiType === 'jsonbin') {
-                    // Remover base64 das questões (manter apenas imageId)
-                    cleanQuizData.groups.forEach(group => {
-                        if (group.questions) {
-                            group.questions.forEach(question => {
-                                if (question.imageId) {
-                                    // Tem imageId: remover base64 (está no bin separado)
-                                    delete question.imageBase64;
-                                    delete question.imageMimeType;
-                                    delete question.imageFilename;
-                                    delete question.imageOriginalName;
-                                }
-                                // Se não tem imageId, manter dados legados para compatibilidade
-                            });
-                        }
-                    });
-                }
-
                 // Determinar o método HTTP correto: POST para servidor personalizado, PUT para JSONBin
                 const method = API_CONFIG.apiType === 'jsonbin' ? 'PUT' : 'POST';
 
                 const url = getUpdateURL('quiz');
                 const headers = getRequestHeaders(true);
 
-                // Usar dados limpos (sem base64) para JSONBin, dados originais para servidor customizado
-                const dataToSave = API_CONFIG.apiType === 'jsonbin' ? cleanQuizData : quizData;
-
-                const payloadSize = JSON.stringify(dataToSave).length;
+                const payloadSize = JSON.stringify(quizData).length;
                 const payloadMB = (payloadSize / 1024 / 1024).toFixed(2);
 
                 console.log(`📤 SALVANDO quiz via ${method} para: ${url}`);
                 console.log(`📋 Headers:`, headers);
                 console.log(`📦 Payload size: ${payloadSize} bytes (${payloadMB} MB)`);
-                console.log(`📝 Payload completo (primeiros 500 chars):`, JSON.stringify(dataToSave).substring(0, 500));
-
-                // Limite de segurança: 8 MB para deixar margem dos 10 MB do JSONBin Pro
-                const maxSafeSizeMB = 8;
-                const maxSafeSize = maxSafeSizeMB * 1024 * 1024;
-
-                if (payloadSize > maxSafeSize) {
-                    const errorMsg = `❌ ERRO: Payload muito grande (${payloadMB} MB)!\n\nLimite de segurança: ${maxSafeSizeMB} MB\nLimite do JSONBin Pro: 10 MB\n\nPor favor, remova algumas imagens ou use imagens menores.`;
-                    console.error(errorMsg);
-                    setStatus('error', `❌ Dados muito grandes: ${payloadMB} MB`);
-                    showAlert(errorMsg, 'error');
-                    hideLoadingOverlay();
-                    return;
-                }
-
-                // Avisar se estiver próximo do limite (> 7 MB)
-                if (payloadSize > 7 * 1024 * 1024) {
-                    console.warn(`⚠️ Atenção: Payload grande (${payloadMB} MB). Próximo do limite de ${maxSafeSizeMB} MB!`);
-                    showAlert(`⚠️ Atenção: Dados grandes (${payloadMB} MB). Você está próximo do limite de ${maxSafeSizeMB} MB.`, 'warning');
-                }
+                console.log(`📝 Payload completo (primeiros 500 chars):`, JSON.stringify(quizData).substring(0, 500));
 
                 const response = await fetch(url, {
                     method: method,
                     headers: headers,
-                    body: JSON.stringify(dataToSave)
+                    body: JSON.stringify(quizData)
                 });
 
                 console.log(`📡 Status da resposta: ${response.status} ${response.statusText}`);
@@ -2424,12 +2052,16 @@ Registration URL: ${baseUrl}${registrationEndpoint}
 
                 setStatus('success', '✅ Alterações salvas com sucesso');
                 showAlert('Perguntas salvas com sucesso!', 'success');
+
+                // Esconder overlay após sucesso
                 hideLoadingOverlay();
 
             } catch (error) {
                 console.error('Error saving questions:', error);
                 setStatus('error', '❌ Erro ao salvar');
                 showAlert('Erro ao salvar: ' + error.message, 'error');
+
+                // Esconder overlay mesmo em caso de erro
                 hideLoadingOverlay();
             }
         }
@@ -2881,10 +2513,8 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 category: category
             };
 
-            // Add image if provided (novo sistema: só imageId, base64 vai para bin separado)
+            // Add image if provided
             if (currentImageData && currentImageData.base64) {
-                newQuestion.imageId = currentImageData.imageId;
-                // Manter dados legados para compatibilidade temporária
                 newQuestion.imageBase64 = currentImageData.base64;
                 newQuestion.imageMimeType = currentImageData.mimeType;
                 newQuestion.imageFilename = currentImageData.filename;
@@ -2972,7 +2602,6 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                         <p style="margin: 0; color: #666;">🖼️ Imagem vinculada: <strong>${question.imageFilename}</strong></p>
                         <small style="color: #999;">Para alterar, faça upload de uma nova imagem</small>
                         <br><br>
-                        <input type="file" id="questionImage" accept="image/*" style="display: none;">
                         <button type="button" class="image-upload-btn" onclick="document.getElementById('questionImage').click()">
                             🔄 Trocar Imagem
                         </button>
@@ -2981,8 +2610,6 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                         </button>
                     </div>
                 `;
-                // Reattach event listener to the new input
-                document.getElementById('questionImage').addEventListener('change', handleImageUpload);
                 currentImageData = null;
             } else {
                 removeImage();
@@ -3068,20 +2695,13 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 category: category
             };
 
-            // Add image if provided (novo sistema: imageId + dados legados para compatibilidade)
             if (currentImageData && currentImageData.base64) {
-                updatedQuestion.imageId = currentImageData.imageId;
-                // Manter dados legados para compatibilidade temporária
                 updatedQuestion.imageBase64 = currentImageData.base64;
                 updatedQuestion.imageMimeType = currentImageData.mimeType;
                 updatedQuestion.imageFilename = currentImageData.filename;
                 updatedQuestion.imageOriginalName = currentImageData.originalName;
             } else if (!imageRemoved) {
                 const previous = foundGroup.questions[questionIndex];
-                if (previous.imageId) {
-                    // Novo sistema: manter imageId
-                    updatedQuestion.imageId = previous.imageId;
-                }
                 if (previous.imageBase64) {
                     updatedQuestion.imageBase64 = previous.imageBase64;
                     updatedQuestion.imageMimeType = previous.imageMimeType;
@@ -3092,8 +2712,6 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                     updatedQuestion.imageOriginalName = previous.imageOriginalName;
                 }
             } else {
-                // Imagem removida: limpar tudo
-                updatedQuestion.imageId = null;
                 updatedQuestion.imageBase64 = null;
                 updatedQuestion.imageMimeType = null;
                 updatedQuestion.imageFilename = null;
@@ -3302,84 +2920,6 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             document.getElementById('avgTime').textContent = avgTime + 's';
         }
 
-        /**
-         * Atualiza as barras de progresso de uso de espaço por grupo (Config tab)
-         */
-        function updateGroupStorageStats() {
-            const container = document.getElementById('groupStorageStats');
-
-            if (!quizData || !quizData.groups || API_CONFIG.apiType !== 'jsonbin') {
-                container.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">Carregue um quiz JSONBin para ver o uso de espaço</div>';
-                return;
-            }
-
-            let html = '';
-            const limitBytes = 1024 * 1024; // 1 MB
-
-            quizData.groups.slice(0, 6).forEach((group, index) => {
-                // Coletar imagens do grupo
-                const groupImages = [];
-                if (group.questions) {
-                    group.questions.forEach(q => {
-                        if (q.imageId && q.imageBase64) {
-                            groupImages.push({
-                                imageId: q.imageId,
-                                base64: q.imageBase64,
-                                mimeType: q.imageMimeType,
-                                filename: q.imageFilename,
-                                originalName: q.imageOriginalName
-                            });
-                        }
-                    });
-                }
-
-                // Dividir em chunks para ver quantos bins serão usados
-                const chunks = splitImagesIntoChunks(groupImages);
-                const totalBins = chunks.length || 0;
-
-                // Calcular tamanho do maior bin
-                let maxChunkSize = 0;
-                chunks.forEach(chunk => {
-                    const chunkSize = JSON.stringify({ images: chunk }).length;
-                    if (chunkSize > maxChunkSize) {
-                        maxChunkSize = chunkSize;
-                    }
-                });
-
-                const percentage = Math.min(100, (maxChunkSize / limitBytes) * 100);
-                const largestBinKB = (maxChunkSize / 1024).toFixed(0);
-
-                // Determinar classe de cor baseado no maior bin
-                let barClass = 'low';
-                if (percentage >= 80) {
-                    barClass = 'high';
-                } else if (percentage >= 50) {
-                    barClass = 'medium';
-                }
-
-                // Nome do grupo
-                const groupName = group.name || `Grupo ${index + 1}`;
-                const imageCount = groupImages.length;
-                const binsInfo = totalBins > 1 ? ` • ${totalBins} bins` : '';
-
-                html += `
-                    <div class="storage-item">
-                        <div class="storage-header">
-                            <span class="storage-group-name">${groupName}</span>
-                            <span class="storage-size-info">${imageCount} ${imageCount === 1 ? 'imagem' : 'imagens'}${binsInfo} • Maior bin: ${largestBinKB} KB / 1024 KB</span>
-                        </div>
-                        <div class="storage-bar-container">
-                            <div class="storage-bar ${barClass}" style="width: ${percentage}%">
-                                ${percentage > 10 ? percentage.toFixed(0) + '%' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-
-            container.innerHTML = html || '<div style="color: #999; text-align: center; padding: 20px;">Nenhum grupo com imagens</div>';
-        }
-
         function setStatus(type, message) {
             const icon = document.getElementById('statusIcon');
             const text = document.getElementById('statusText');
@@ -3405,6 +2945,28 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             setTimeout(() => {
                 container.innerHTML = '';
             }, 5000);
+        }
+
+        // Loading Overlay Functions
+        function showLoadingOverlay(mainText = 'Salvando questões...', subText = 'Aguarde, processando imagem') {
+            const overlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            const loadingSubtext = document.getElementById('loadingSubtext');
+
+            loadingText.textContent = mainText;
+            loadingSubtext.textContent = subText;
+            overlay.classList.add('active');
+
+            // Desabilitar scroll
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('active');
+
+            // Reabilitar scroll
+            document.body.style.overflow = 'auto';
         }
 
         // Ranking functions
@@ -3498,8 +3060,8 @@ Registration URL: ${baseUrl}${registrationEndpoint}
                 const phone = registration.ddd && registration.phone ? `(${registration.ddd}) ${registration.phone}` : '-';
 
                 const rowColor = position === 1 ? '#fff9db' :
-                                position === 2 ? '#f0f0f0' :
-                                position === 3 ? '#ffe4cc' : 'white';
+                    position === 2 ? '#f0f0f0' :
+                        position === 3 ? '#ffe4cc' : 'white';
 
                 return `
                     <tr style="background: ${rowColor}; border-bottom: 1px solid #e9ecef;">
@@ -3602,6 +3164,254 @@ Registration URL: ${baseUrl}${registrationEndpoint}
             document.body.removeChild(link);
 
             showAlert('Ranking exportado com sucesso!', 'success');
+        }
+
+        // ============================================
+        // REGISTRATIONS & RANKING MANAGEMENT FUNCTIONS
+        // ============================================
+
+        async function loadRegistrationsManagement() {
+            try {
+                setStatus('loading', 'Carregando dados de gerenciamento...');
+
+                console.log('🔄 Carregando dados de cadastros e ranking...');
+
+                // Carregar ranking
+                const rankingResponse = await fetch(getRankingURL(), {
+                    headers: getRequestHeaders()
+                });
+
+                if (!rankingResponse.ok) {
+                    throw new Error(`Erro ao carregar ranking: ${rankingResponse.status}`);
+                }
+
+                rankingData = await rankingResponse.json();
+                console.log('✅ Ranking carregado para gerenciamento:', rankingData);
+
+                // Carregar cadastros
+                const registrationResponse = await fetch(getRegistrationURL(), {
+                    headers: getRequestHeaders()
+                });
+
+                if (!registrationResponse.ok) {
+                    throw new Error(`Erro ao carregar cadastros: ${registrationResponse.status}`);
+                }
+
+                registrationData = await registrationResponse.json();
+                console.log('✅ Cadastros carregados para gerenciamento:', registrationData);
+
+                displayRankingManagement();
+                displayRegistrationsManagement();
+                setStatus('success', '✅ Dados carregados');
+
+            } catch (error) {
+                console.error('❌ Erro ao carregar dados de gerenciamento:', error);
+                setStatus('error', '❌ Erro ao carregar dados');
+                showAlert('Erro ao carregar dados: ' + error.message, 'error');
+            }
+        }
+
+        function displayRankingManagement() {
+            const tbody = document.getElementById('rankingManagementTableBody');
+
+            if (!rankingData || !rankingData.entries || rankingData.entries.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #666;">
+                            Nenhum jogador no ranking ainda.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            // Ordenar por pontuação (desc) e depois por tempo (asc)
+            const sortedEntries = [...rankingData.entries].sort((a, b) => {
+                if (b.score !== a.score) {
+                    return b.score - a.score;
+                }
+                return a.totalTimeSeconds - b.totalTimeSeconds;
+            });
+
+            // Criar mapa de registros por ID para acesso rápido
+            const registrationMap = {};
+            if (registrationData && registrationData.players) {
+                registrationData.players.forEach(player => {
+                    registrationMap[player.id] = player;
+                });
+            }
+
+            tbody.innerHTML = sortedEntries.map((entry, index) => {
+                const registration = registrationMap[entry.id] || {};
+                const position = index + 1;
+                const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}º`;
+                const timeFormatted = formatTime(entry.totalTimeSeconds);
+                const phone = registration.ddd && registration.phone ? `(${registration.ddd}) ${registration.phone}` : '-';
+                const quizCompleted = registration.quizCompleted ? '✅ Sim' : '❌ Não';
+
+                const rowColor = position === 1 ? '#fff9db' :
+                    position === 2 ? '#f0f0f0' :
+                        position === 3 ? '#ffe4cc' : 'white';
+
+                return `
+                    <tr style="background: ${rowColor}; border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px; font-weight: bold;">${medal}</td>
+                        <td style="padding: 12px;">${entry.playerName || registration.name || '-'}</td>
+                        <td style="padding: 12px;">${registration.email || '-'}</td>
+                        <td style="padding: 12px;">${phone}</td>
+                        <td style="padding: 12px;">${registration.cargo || '-'}</td>
+                        <td style="padding: 12px; text-align: center; font-weight: bold; color: #4facfe;">${entry.score}</td>
+                        <td style="padding: 12px; text-align: center;">${timeFormatted}</td>
+                        <td style="padding: 12px; text-align: center;">${quizCompleted}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 14px;" onclick="deleteRankingEntry('${entry.id}', '${entry.playerName || registration.name || 'Jogador'}')">
+                                🗑️ Deletar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function displayRegistrationsManagement() {
+            const tbody = document.getElementById('registrationsTableBody');
+
+            if (!registrationData || !registrationData.players || registrationData.players.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" style="text-align: center; padding: 40px; color: #666;">
+                            Nenhum cadastro encontrado.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = registrationData.players.map(player => {
+                const quizCompleted = player.quizCompleted ? '✅ Sim' : '❌ Não';
+                const registrationDate = player.registrationDate ? new Date(player.registrationDate).toLocaleString('pt-BR') : '-';
+                const phone = player.ddd && player.phone ? `(${player.ddd}) ${player.phone}` : '-';
+
+                return `
+                    <tr style="border-bottom: 1px solid #e9ecef;">
+                        <td style="padding: 12px; font-family: monospace;">${player.id}</td>
+                        <td style="padding: 12px;">${player.name || '-'}</td>
+                        <td style="padding: 12px;">${player.email || '-'}</td>
+                        <td style="padding: 12px; text-align: center;">${player.ddd || '-'}</td>
+                        <td style="padding: 12px;">${player.phone || '-'}</td>
+                        <td style="padding: 12px;">${player.cargo || '-'}</td>
+                        <td style="padding: 12px;">${player.participationType || '-'}</td>
+                        <td style="padding: 12px;">${registrationDate}</td>
+                        <td style="padding: 12px; text-align: center;">${quizCompleted}</td>
+                        <td style="padding: 12px; text-align: center;">
+                            <button class="btn btn-danger" style="padding: 6px 12px; font-size: 14px;" onclick="deleteRegistration('${player.id}', '${player.name || 'Usuário'}')">
+                                🗑️ Deletar
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function deleteRankingEntry(playerId, playerName) {
+            if (!confirm(`Tem certeza que deseja deletar a entrada do ranking de "${playerName}"?\n\nIsso NÃO deletará o cadastro do jogador, apenas sua pontuação no ranking.`)) {
+                return;
+            }
+
+            try {
+                setStatus('loading', 'Deletando entrada do ranking...');
+
+                // Remover entrada do ranking
+                const updatedEntries = rankingData.entries.filter(entry => entry.id !== playerId);
+                rankingData.entries = updatedEntries;
+
+                // Salvar ranking atualizado
+                const response = await fetch(getRankingURL(), {
+                    method: 'POST',
+                    headers: {
+                        ...getRequestHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(rankingData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erro ao salvar ranking: ${response.status}`);
+                }
+
+                console.log('✅ Entrada do ranking deletada:', playerId);
+                setStatus('success', '✅ Entrada deletada');
+                showAlert(`Entrada de "${playerName}" deletada do ranking com sucesso!`, 'success');
+
+                // Recarregar exibição
+                displayRankingManagement();
+
+            } catch (error) {
+                console.error('❌ Erro ao deletar entrada:', error);
+                setStatus('error', '❌ Erro ao deletar');
+                showAlert('Erro ao deletar entrada: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteRegistration(playerId, playerName) {
+            if (!confirm(`Tem certeza que deseja deletar o cadastro de "${playerName}"?\n\n⚠️ ATENÇÃO: Isso irá deletar:\n- O cadastro do usuário\n- A entrada no ranking (se existir)\n\nEsta ação não pode ser desfeita!`)) {
+                return;
+            }
+
+            try {
+                setStatus('loading', 'Deletando cadastro...');
+
+                // Remover do cadastro
+                const updatedPlayers = registrationData.players.filter(player => player.id !== playerId);
+                registrationData.players = updatedPlayers;
+
+                // Salvar cadastro atualizado
+                const registrationResponse = await fetch(getRegistrationURL(), {
+                    method: 'POST',
+                    headers: {
+                        ...getRequestHeaders(),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(registrationData)
+                });
+
+                if (!registrationResponse.ok) {
+                    throw new Error(`Erro ao salvar cadastros: ${registrationResponse.status}`);
+                }
+
+                // Remover do ranking se existir
+                const rankingIndex = rankingData.entries.findIndex(entry => entry.id === playerId);
+                if (rankingIndex !== -1) {
+                    rankingData.entries = rankingData.entries.filter(entry => entry.id !== playerId);
+
+                    // Salvar ranking atualizado
+                    const rankingResponse = await fetch(getRankingURL(), {
+                        method: 'POST',
+                        headers: {
+                            ...getRequestHeaders(),
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(rankingData)
+                    });
+
+                    if (!rankingResponse.ok) {
+                        throw new Error(`Erro ao salvar ranking: ${rankingResponse.status}`);
+                    }
+                }
+
+                console.log('✅ Cadastro deletado:', playerId);
+                setStatus('success', '✅ Cadastro deletado');
+                showAlert(`Cadastro de "${playerName}" deletado com sucesso!`, 'success');
+
+                // Recarregar exibições
+                displayRegistrationsManagement();
+                displayRankingManagement();
+
+            } catch (error) {
+                console.error('❌ Erro ao deletar cadastro:', error);
+                setStatus('error', '❌ Erro ao deletar');
+                showAlert('Erro ao deletar cadastro: ' + error.message, 'error');
+            }
         }
     </script>
 </body>

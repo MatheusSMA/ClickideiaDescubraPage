@@ -5,11 +5,14 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <title>ClickDescubra-2025 (Fullscreen)</title>
-  <!-- Meta viewport para mobile -->
+  <link rel="shortcut icon" href="TemplateData/favicon.ico">
+  <link rel="stylesheet" href="TemplateData/style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- viewport pra mobile -->
   <meta name="viewport"
     content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes">
   <style>
-    /* Ocupa 100% da janela e remove scrollbars */
+    /* faz a página toda virar área do jogo */
     html,
     body {
       margin: 0;
@@ -19,41 +22,113 @@
       overflow: hidden;
     }
 
-    /* Canvas cobre toda a área visível */
-    #unity-canvas {
+    /* container ocupa tudo */
+    #unity-container {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
+    }
+
+    /* canvas ocupa tudo */
+    #unity-canvas {
+      width: 100%;
+      height: 100%;
       background: #FDFAF4;
+    }
+
+    /* loading centralizado por cima */
+    #unity-loading-bar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* warning continua em cima */
+    #unity-warning {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
     }
   </style>
 </head>
 
 <body>
-  <!-- Canvas Unity -->
-  <canvas id="unity-canvas" tabindex="-1"></canvas>
-
-  <!-- Loader Unity -->
-  <script src="Build/ClickideiaDescubraPage.loader.js"></script>
+  <div id="unity-container">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-loading-bar">
+      <div id="unity-logo"></div>
+      <div id="unity-progress-bar-empty">
+        <div id="unity-progress-bar-full"></div>
+      </div>
+    </div>
+    <div id="unity-warning"></div>
+  </div>
   <script>
-    createUnityInstance(document.getElementById("unity-canvas"), {
-      dataUrl: "Build/ClickideiaDescubraPage.data",
-      frameworkUrl: "Build/ClickideiaDescubraPage.framework.js",
-      codeUrl: "Build/ClickideiaDescubraPage.wasm",
+    // service worker (pwa)
+    window.addEventListener("load", function () {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("ServiceWorker.js");
+      }
+    });
+
+    var container = document.querySelector("#unity-container");
+    var canvas = document.querySelector("#unity-canvas");
+    var loadingBar = document.querySelector("#unity-loading-bar");
+    var progressBarFull = document.querySelector("#unity-progress-bar-full");
+    var warningBanner = document.querySelector("#unity-warning");
+
+    function unityShowBanner(msg, type) {
+      function updateBannerVisibility() {
+        warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+      }
+      var div = document.createElement('div');
+      div.innerHTML = msg;
+      warningBanner.appendChild(div);
+      if (type == 'error') div.style = 'background: red; padding: 10px;';
+      else {
+        if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+        setTimeout(function () {
+          warningBanner.removeChild(div);
+          updateBannerVisibility();
+        }, 5000);
+      }
+      updateBannerVisibility();
+    }
+
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/ClickideiaDescubraPage.loader.js";
+    var config = {
+      arguments: [],
+      dataUrl: buildUrl + "/ClickideiaDescubraPage.data",
+      frameworkUrl: buildUrl + "/ClickideiaDescubraPage.framework.js",
+      codeUrl: buildUrl + "/ClickideiaDescubraPage.wasm",
       streamingAssetsUrl: "StreamingAssets",
       companyName: "DefaultCompany",
       productName: "ClickDescubra-2025",
       productVersion: "2.0",
-      // matchWebGLToCanvasSize: true,
-      // devicePixelRatio: window.devicePixelRatio
-    }).then((unityInstance) => {
-      // Tela cheia automática (alguns browsers pedem interação/permissão)
-      unityInstance.SetFullscreen(1);
-    }).catch((message) => {
-      console.error(message);
-      alert("Erro ao iniciar Unity:\n" + message);
-    });
+      showBanner: unityShowBanner,
+      // matchWebGLToCanvasSize: true, // pode deixar assim se quiser acompanhar o DOM
+    };
+
+    loadingBar.style.display = "block";
+
+    var script = document.createElement("script");
+    script.src = loaderUrl;
+    script.onload = () => {
+      createUnityInstance(canvas, config, (progress) => {
+        progressBarFull.style.width = (100 * progress) + "%";
+      }).then((unityInstance) => {
+        loadingBar.style.display = "none";
+        // aqui força o fullscreen igual nos outros
+        unityInstance.SetFullscreen(1);
+      }).catch((message) => {
+        alert(message);
+      });
+    };
+    document.body.appendChild(script);
   </script>
 </body>
 
